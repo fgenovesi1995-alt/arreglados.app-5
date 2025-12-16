@@ -374,6 +374,12 @@
                 db = getFirestore(app);
                 auth = getAuth(app); 
                 
+                // CRÍTICO: Activamos la bandera y los botones inmediatamente después de obtener 'auth',
+                // para que cualquier fallo posterior no bloquee la UI de login/registro.
+                isAuthAppReady = true; 
+                updateAuthModalButtons(true);
+                console.log("FIREBASE: Auth system is now ready (buttons enabled).");
+                
                 try {
                     if (initialAuthToken) {
                         await signInWithCustomToken(auth, initialAuthToken);
@@ -382,13 +388,9 @@
                     }
                 } catch (authError) {
                     console.error("Error durante el inicio de sesión inicial (anónimo/token):", authError);
-                    // Si falla, permitimos que la aplicación continúe, pero lo registramos.
+                    // No bloqueamos aquí, el proceso debe continuar
                 }
                 
-                // CRÍTICO: Una vez que auth está listo y el usuario (al menos anónimo) ha intentado iniciar sesión,
-                // actualizamos el estado.
-                isAuthAppReady = true;
-                updateAuthModalButtons(true);
                 
                 // CRÍTICO: Ejecutar la simulación inmediatamente después de inicializar db/auth,
                 // para que los trabajadores estén disponibles incluso para usuarios anónimos.
@@ -427,7 +429,8 @@
                 });
             } catch (e) { 
                 console.error("Error crítico en initializeFirebase:", e); 
-                isAuthAppReady = true; // Forzamos true para que al menos se puedan usar los botones
+                // Forzamos la habilitación para que el usuario pueda intentar el login/registro
+                isAuthAppReady = true; 
                 updateAuthModalButtons(true); 
             }
         }
