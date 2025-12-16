@@ -374,13 +374,18 @@
                 db = getFirestore(app);
                 auth = getAuth(app); 
                 
-                if (initialAuthToken) {
-                    await signInWithCustomToken(auth, initialAuthToken);
-                } else {
-                    await signInAnonymously(auth);
+                try {
+                    if (initialAuthToken) {
+                        await signInWithCustomToken(auth, initialAuthToken);
+                    } else {
+                        await signInAnonymously(auth);
+                    }
+                } catch (authError) {
+                    console.error("Error durante el inicio de sesión inicial (anónimo/token):", authError);
+                    // Si falla, permitimos que la aplicación continúe, pero lo registramos.
                 }
                 
-                // CRÍTICO: Una vez que auth está listo y el usuario (al menos anónimo) ha iniciado sesión,
+                // CRÍTICO: Una vez que auth está listo y el usuario (al menos anónimo) ha intentado iniciar sesión,
                 // actualizamos el estado.
                 isAuthAppReady = true;
                 updateAuthModalButtons(true);
@@ -421,8 +426,9 @@
                     }
                 });
             } catch (e) { 
-                console.error("Error en initializeFirebase:", e); 
-                updateAuthModalButtons(true); // Si hay un error, al menos habilitamos los botones para que muestre el error de Firebase
+                console.error("Error crítico en initializeFirebase:", e); 
+                isAuthAppReady = true; // Forzamos true para que al menos se puedan usar los botones
+                updateAuthModalButtons(true); 
             }
         }
 
