@@ -288,8 +288,9 @@
                 <input id="auth-email" type="email" placeholder="Correo Electrónico" class="w-full p-3 mb-3 rounded-lg bg-[#21262d] text-white border border-gray-700 focus:border-indigo-500">
                 <input id="auth-password" type="password" placeholder="Contraseña" class="w-full p-3 mb-6 rounded-lg bg-[#21262d] text-white border border-gray-700 focus:border-indigo-500">
                 
-                <button onclick="handleAuth(true)" class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg mb-3 transition">Iniciar Sesión</button>
-                <button onclick="handleAuth(false)" class="w-full py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg transition">Crear Cuenta</button>
+                <!-- IDs añadidas para control de estado -->
+                <button id="login-button" onclick="handleAuth(true)" disabled class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg mb-3 transition disabled:opacity-50">Iniciar Sesión</button>
+                <button id="register-button" onclick="handleAuth(false)" disabled class="w-full py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg transition disabled:opacity-50">Crear Cuenta</button>
 
                 <button onclick="closeAuthModal()" class="w-full mt-4 text-gray-400 text-sm hover:text-white transition">Cancelar</button>
             </div>
@@ -335,6 +336,9 @@
         let isMapInitialized = false;
         let currentWorker = null; // Variable para guardar el perfil del trabajador seleccionado
         
+        // Bandera de estado
+        let isAuthAppReady = false; 
+
         // Paths de Firestore
         const FIRESTORE_PATHS = {
             PUBLIC_WORKERS: `/artifacts/${appId}/public/data/workers`,
@@ -343,6 +347,24 @@
 
         // Bandera para asegurar que la simulación solo se ejecute una vez
         let workersSimulationDone = false;
+
+        // Función para actualizar el estado de los botones del modal de autenticación
+        function updateAuthModalButtons(ready) {
+            const loginBtn = document.getElementById('login-button');
+            const registerBtn = document.getElementById('register-button');
+            if (loginBtn && registerBtn) {
+                loginBtn.disabled = !ready;
+                registerBtn.disabled = !ready;
+                if (!ready) {
+                    loginBtn.textContent = 'Cargando Autenticación...';
+                    registerBtn.textContent = 'Cargando Autenticación...';
+                } else {
+                    loginBtn.textContent = 'Iniciar Sesión';
+                    registerBtn.textContent = 'Crear Cuenta';
+                }
+            }
+        }
+
 
         // --- INICIALIZACIÓN DE FIREBASE ---
         async function initializeFirebase() {
@@ -357,6 +379,11 @@
                 } else {
                     await signInAnonymously(auth);
                 }
+                
+                // CRÍTICO: Una vez que auth está listo y el usuario (al menos anónimo) ha iniciado sesión,
+                // actualizamos el estado.
+                isAuthAppReady = true;
+                updateAuthModalButtons(true);
                 
                 // CRÍTICO: Ejecutar la simulación inmediatamente después de inicializar db/auth,
                 // para que los trabajadores estén disponibles incluso para usuarios anónimos.
@@ -393,7 +420,10 @@
                         listenToWorkersData(db, 'all'); // Recargar datos para anónimos
                     }
                 });
-            } catch (e) { console.error("Error en initializeFirebase:", e); }
+            } catch (e) { 
+                console.error("Error en initializeFirebase:", e); 
+                updateAuthModalButtons(true); // Si hay un error, al menos habilitamos los botones para que muestre el error de Firebase
+            }
         }
 
         // --- AUTHENTICATION LOGIC ---
@@ -426,9 +456,10 @@
                 return;
             }
             
-            if (!auth || !auth.app.options.projectId) { // Verificación reforzada
-                 displayAuthError("Error: El servicio de autenticación no está listo.");
-                 console.error("Auth object is not fully initialized.");
+            // CRÍTICO: Usamos el nuevo estado para detener la ejecución si no está listo
+            if (!isAuthAppReady) { 
+                 displayAuthError("Error: El servicio de autenticación se está cargando, intente nuevamente en un momento.");
+                 console.error("Auth object is not fully initialized. Blocking.");
                  return;
             }
 
@@ -729,6 +760,7 @@
         }
 
         document.addEventListener('DOMContentLoaded', () => {
+            updateAuthModalButtons(false); // Deshabilitar botones al inicio
             initializeFirebase();
             document.querySelectorAll('.nav-button').forEach(button => {
                 button.addEventListener('click', (e) => showView(e.currentTarget.getAttribute('data-view')));
