@@ -321,7 +321,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, onSnapshot, collection, query, limit, setDoc, getDoc, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, onSnapshot, collection, query, limit, setDoc, getDoc, where, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Variables de entorno
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
@@ -341,6 +341,9 @@
             PRIVATE_USER_DOC_PATH: (uid) => `/artifacts/${appId}/users/${uid}/data/user_profile`
         };
 
+        // Bandera para asegurar que la simulación solo se ejecute una vez
+        let workersSimulationDone = false;
+
         // --- INICIALIZACIÓN DE FIREBASE ---
         async function initializeFirebase() {
             if (Object.keys(firebaseConfig).length === 0) return;
@@ -355,17 +358,24 @@
                     await signInAnonymously(auth);
                 }
                 
+                // CRÍTICO: Ejecutar la simulación inmediatamente después de inicializar db/auth,
+                // para que los trabajadores estén disponibles incluso para usuarios anónimos.
+                if (!workersSimulationDone) {
+                    await simulateInitialWorkers(db);
+                    workersSimulationDone = true;
+                }
+                
                 onAuthStateChanged(auth, (user) => {
                     const userIdDisplay = document.getElementById('current-user-id');
                     const authInfoDiv = document.getElementById('auth-info');
                     
-                    if (user) {
+                    if (user && !user.isAnonymous) { // Solo si está logueado con correo/pass
                         userIdDisplay.textContent = user.uid.substring(0, 8) + '...';
                         
                         // Actualizar UI de ajustes si está logueado
                         authInfoDiv.innerHTML = `
                              <h3 class="text-white font-bold mb-2">¡Bienvenido!</h3>
-                             <p class="text-gray-400 text-sm mb-4">Usted está conectado como: ${user.email || 'Anónimo'}</p>
+                             <p class="text-gray-400 text-sm mb-4">Usted está conectado como: ${user.email}</p>
                              <h3 class="text-white font-bold mb-2">Plan Actual: Gratuito</h3>
                              <p class="text-gray-400 text-sm mb-4">Acceso básico a listado de trabajadores.</p>
                              <button class="w-full py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg font-bold text-sm">Pasar a Premium 💎</button>
@@ -380,7 +390,7 @@
                             <p class="text-gray-400 text-sm mb-4">Inicia sesión para guardar tus trabajos.</p>
                             <button onclick="openAuthModal()" class="w-full mt-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold text-sm transition">Iniciar Sesión / Registrarse</button>
                         `;
-
+                        listenToWorkersData(db, 'all'); // Recargar datos para anónimos
                     }
                 });
             } catch (e) { console.error("Error en initializeFirebase:", e); }
@@ -416,19 +426,31 @@
                 return;
             }
             
-            if (!auth) {
+            if (!auth || !auth.app.options.projectId) { // Verificación reforzada
                  displayAuthError("Error: El servicio de autenticación no está listo.");
+                 console.error("Auth object is not fully initialized.");
                  return;
             }
 
             try {
                 if (isLogin) {
+                    console.log("Attempting sign in..."); // LOG DE CONTROL
                     await signInWithEmailAndPassword(auth, email, password);
                 } else {
+                    console.log("Attempting user creation..."); // LOG DE CONTROL
                     await createUserWithEmailAndPassword(auth, email, password);
+                    
+                    displayAuthError("¡Registro exitoso! Iniciando sesión...");
+                    document.getElementById('auth-error-message').classList.remove('text-red-400');
+                    document.getElementById('auth-error-message').classList.add('text-green-400');
+                    
+                    await new Promise(resolve => setTimeout(resolve, 1000)); 
                 }
                 closeAuthModal();
             } catch (error) {
+                document.getElementById('auth-error-message').classList.add('text-red-400');
+                document.getElementById('auth-error-message').classList.remove('text-green-400');
+
                 let errorMessage;
                 switch(error.code) {
                     case 'auth/user-not-found':
@@ -448,7 +470,7 @@
                         errorMessage = "ERROR CRÍTICO: El método de 'Correo/Contraseña' NO está habilitado en su Consola de Firebase.";
                         break;
                     default:
-                        errorMessage = "Error desconocido. Verifique su conexión y la configuración de Firebase.";
+                        errorMessage = `Error desconocido (${error.code}). Verifique su conexión.`;
                         break;
                 }
                 displayAuthError(errorMessage);
@@ -472,7 +494,7 @@
             el.scrollTop = el.scrollHeight;
         }
 
-        // --- WORKER PROFILE LOGIC (Sin cambios) ---
+        // --- WORKER PROFILE LOGIC ---
         window.openWorkerProfile = async function(workerId) {
             if (!db) return;
             
@@ -510,8 +532,15 @@
         };
 
         window.startChatFromProfile = function() {
+            if (!auth?.currentUser || auth.currentUser.isAnonymous) {
+                // VERIFICACIÓN CRÍTICA: Forzar Login si el usuario es anónimo o no está logueado
+                openAuthModal();
+                displayAuthError("Necesitas iniciar sesión para contactar a un profesional.");
+                return;
+            }
+
             if (currentWorker) {
-                // Navegamos al chat (futura implementación real de chat)
+                // Lógica de inicio de chat real (futura implementación)
                 openChat(currentWorker.nombre);
             } else {
                 console.error("No hay trabajador seleccionado.");
@@ -544,9 +573,6 @@
                 snapshot.forEach(doc => workers.push({ id: doc.id, ...doc.data() }));
                 renderWorkers(workers);
                 updateMapMarkers(workers);
-                if (workers.length === 0 && category === 'all') {
-                    simulateInitialWorkers(db).catch(e => console.log("Error simulando datos:", e));
-                }
             }, (error) => {
                 console.error("Error leyendo Firestore:", error);
                 document.getElementById('worker-list').innerHTML = `<div class="p-4 text-center text-gray-400">Error cargando datos.</div>`;
@@ -686,13 +712,20 @@
         };
 
         async function simulateInitialWorkers(db) {
-             const batch = [
-                { id: "w1", nombre: "Juan Pérez", oficio: "Electricista", reviews: 45, rating: 5, distancia: 2.1, lat: -34.6037, lng: -58.3816 },
-                { id: "w2", nombre: "María Gómez", oficio: "Plomero", reviews: 12, rating: 4.2, distancia: 3.5, lat: -34.5997, lng: -58.4000 },
-                { id: "w3", nombre: "Roberto Díaz", oficio: "Carpintero", reviews: 98, rating: 4.8, distancia: 5.0, lat: -34.6200, lng: -58.3700 },
-                { id: "w4", nombre: "Ana López", oficio: "Albañil", reviews: 20, rating: 4.5, distancia: 7.0, lat: -34.6150, lng: -58.3900 }
-             ];
-             for(let w of batch) await setDoc(doc(db, FIRESTORE_PATHS.PUBLIC_WORKERS, w.id), w);
+             const workersCollection = collection(db, FIRESTORE_PATHS.PUBLIC_WORKERS);
+             // CRÍTICO: Verificar si la colección ya tiene documentos antes de insertar
+             const snapshot = await getDocs(workersCollection);
+
+             if (snapshot.empty) {
+                 const batch = [
+                    { id: "w1", nombre: "Juan Pérez", oficio: "Electricista", reviews: 45, rating: 5, distancia: 2.1, lat: -34.6037, lng: -58.3816 },
+                    { id: "w2", nombre: "María Gómez", oficio: "Plomero", reviews: 12, rating: 4.2, distancia: 3.5, lat: -34.5997, lng: -58.4000 },
+                    { id: "w3", nombre: "Roberto Díaz", oficio: "Carpintero", reviews: 98, rating: 4.8, distancia: 5.0, lat: -34.6200, lng: -58.3700 },
+                    { id: "w4", nombre: "Ana López", oficio: "Albañil", reviews: 20, rating: 4.5, distancia: 7.0, lat: -34.6150, lng: -58.3900 }
+                 ];
+                 for(let w of batch) await setDoc(doc(db, FIRESTORE_PATHS.PUBLIC_WORKERS, w.id), w);
+                 console.log("Simulación de trabajadores iniciales completada.");
+             }
         }
 
         document.addEventListener('DOMContentLoaded', () => {
