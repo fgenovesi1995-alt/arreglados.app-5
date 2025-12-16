@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arreglados App - Oficios LATAM</title>
+    
+    <!-- === OPTIMIZACIONES PWA AÑADIDAS PARA MÓVIL === -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#161b22">
+    <!-- Icono de la app (simulado) -->
+    <link rel="apple-touch-icon" href="https://placehold.co/180x180/4f46e5/ffffff?text=A">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Leaflet CSS (Mapas) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+     crossorigin=""/>
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+     crossorigin=""></script>
+     
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0d1117; 
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        #app-container {
+            width: 100%;
+            max-width: 420px; 
+            height: 90vh; 
+            max-height: 800px;
+            background-color: #161b22; 
+            border-radius: 2rem;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+        .view {
+            display: none;
+            height: 100%;
+            overflow-y: auto;
+            padding-bottom: 5rem; /* Espacio para el footer */
+        }
+        .view.active {
+            display: block;
+        }
+        .star-rating { color: #fcd34d; }
+        
+        /* Ajustes para el mapa */
+        #map { height: 400px; width: 100%; border-radius: 0.75rem; z-index: 0; }
+        
+        /* Estilos burbujas de chat */
+        .chat-bubble { max-width: 75%; padding: 0.75rem; border-radius: 1rem; margin-bottom: 0.5rem; font-size: 0.9rem; }
+        .chat-sent { background-color: #4f46e5; color: white; align-self: flex-end; border-bottom-right-radius: 0.2rem; }
+        .chat-received { background-color: #374151; color: white; align-self: flex-start; border-bottom-left-radius: 0.2rem; }
+        
+        /* Estilos específicos Gemini */
+        .gemini-bubble { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; align-self: flex-start; border-bottom-left-radius: 0.2rem; }
+        .typing-indicator::after { content: '...'; animation: typing 1s infinite; }
+        @keyframes typing { 0% { content: '.'; } 33% { content: '..'; } 66% { content: '...'; } }
+        
+        /* Estilos para el Modal de Autenticación */
+        #auth-modal { transition: opacity 0.3s ease; }
+    </style>
+</head>
+<body>
+
+    <div id="app-container">
+        <!-- HEADER -->
+        <header class="p-4 bg-[#21262d] text-white flex justify-between items-center shadow-lg z-10">
+            <h1 id="header-title" class="text-xl font-bold">Arreglados</h1>
+            <div class="flex gap-3">
+                <!-- Toggle Mapa/Lista (Solo visible en Home) -->
+                <button id="map-toggle-btn" class="text-indigo-400 font-medium text-sm hidden" onclick="toggleMapView()">
+                    Ver Mapa
+                </button>
+                <button class="text-gray-400 hover:text-white transition">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                </button>
+            </div>
+        </header>
+
+        <!-- CONTENIDO PRINCIPAL -->
+        <main class="flex-grow relative bg-[#161b22]">
+
+            <!-- VISTA 1: HOME (Búsqueda y Mapa) -->
+            <div id="home-view" class="view active p-4">
+                <div class="mb-4">
+                    <h2 class="text-white text-2xl font-semibold mb-2">Busca un Profesional</h2>
+                    <input type="text" placeholder="¿Qué necesitas arreglar hoy?"
+                           class="w-full p-3 rounded-xl bg-[#21262d] text-white border border-gray-700 focus:border-indigo-500 focus:ring-indigo-500 placeholder-gray-500">
+                    
+                    <!-- NUEVO BOTÓN GEMINI AI -->
+                    <button onclick="openGeminiModal()" class="w-full mt-3 p-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold shadow-lg flex items-center justify-center gap-2 hover:scale-[1.02] transition-transform">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
+                        ¿No sabes qué necesitas? Pregúntale a Gemini
+                    </button>
+                </div>
+
+                <!-- Categorías (BOTONES ACTIVOS) -->
+                <div id="categories-section" class="grid grid-cols-4 gap-2 mb-6 transition-all duration-300">
+                    <button class="flex flex-col items-center p-2 rounded-xl bg-[#21262d] hover:bg-indigo-700 transition text-white" onclick="filterWorkers('Carpintero')">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mb-1 text-yellow-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 10l-6 6M18 14l-6-6M4 20l12-12"/></svg>
+                        <span class="text-[10px]">Carpintero</span>
+                    </button>
+                    <button class="flex flex-col items-center p-2 rounded-xl bg-[#21262d] hover:bg-indigo-700 transition text-white" onclick="filterWorkers('Electricista')">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mb-1 text-red-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2l-3 8h5l-3 10l5-8h-5l3-10z"/></svg>
+                        <span class="text-[10px]">Electricista</span>
+                    </button>
+                    <button class="flex flex-col items-center p-2 rounded-xl bg-[#21262d] hover:bg-indigo-700 transition text-white" onclick="filterWorkers('Plomero')">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mb-1 text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 6L12 16L2 6M12 16V22"/></svg>
+                        <span class="text-[10px]">Plomero</span>
+                    </button>
+                    <button class="flex flex-col items-center p-2 rounded-xl bg-[#21262d] hover:bg-indigo-700 transition text-white" onclick="filterWorkers('Albañil')">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mb-1 text-green-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M10 9l3-3l3 3m-6 6l3 3l3-3"/></svg>
+                        <span class="text-[10px]">Albañil</span>
+                    </button>
+                     <!-- Botón para ver Todos -->
+                    <button class="flex flex-col items-center p-2 rounded-xl bg-[#21262d] hover:bg-gray-700 transition text-white" onclick="filterWorkers('all')">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mb-1 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20m-10-9v18"/></svg>
+                        <span class="text-[10px]">Todos</span>
+                    </button>
+                </div>
+
+                <!-- Contenedor del Mapa (Oculto por defecto) -->
+                <div id="map-container" class="hidden mb-4 relative">
+                    <div id="map"></div>
+                    <div class="absolute bottom-4 left-4 right-4 bg-[#21262d] p-3 rounded-lg shadow-xl z-[400] text-white text-xs opacity-90">
+                        <p>📍 Mostrando resultados por Ubicación</p>
+                    </div>
+                </div>
+
+                <!-- Lista de Trabajadores -->
+                <div id="worker-list-container">
+                    <h3 id="list-title" class="text-white text-lg font-semibold mb-3">Trabajadores Destacados</h3>
+                    <div id="worker-list" class="space-y-4 pb-20">
+                        <p class="text-gray-500 text-center">Cargando trabajadores...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VISTA 2: MENSAJES -->
+            <div id="messages-view" class="view p-4">
+                <h2 class="text-white text-2xl font-semibold mb-6">Mensajes</h2>
+                <div class="space-y-2">
+                    <div class="flex items-center bg-[#21262d] p-4 rounded-xl cursor-pointer hover:bg-[#30363d] transition" onclick="openChat('Juan Pérez')">
+                        <div class="relative">
+                            <img class="h-12 w-12 rounded-full object-cover" src="https://placehold.co/48x48/6366f1/ffffff?text=JP" alt="">
+                            <span class="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-[#21262d] rounded-full"></span>
+                        </div>
+                        <div class="ml-4 flex-grow">
+                            <div class="flex justify-between items-baseline">
+                                <h3 class="text-white font-semibold">Juan Pérez</h3>
+                                <span class="text-xs text-gray-500">10:30 AM</span>
+                            </div>
+                            <p class="text-gray-400 text-sm truncate">Hola, ¿a qué hora podrías pasar hoy?</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VISTA DETALLE CHAT (Overlay) -->
+            <div id="chat-detail-view" class="absolute inset-0 bg-[#161b22] z-20 hidden flex flex-col">
+                <div class="p-4 bg-[#21262d] flex items-center shadow-md">
+                    <button onclick="closeChat()" class="text-gray-400 mr-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                    </button>
+                    <img id="chat-avatar" class="h-10 w-10 rounded-full object-cover mr-3" src="" alt="">
+                    <div>
+                        <h3 id="chat-name" class="text-white font-bold">Nombre</h3>
+                        <p class="text-xs text-green-400">En línea</p>
+                    </div>
+                </div>
+                <div id="chat-messages" class="flex-grow p-4 overflow-y-auto flex flex-col">
+                    <div class="chat-bubble chat-received">Hola, vi tu perfil en Arreglados.</div>
+                    <div class="chat-bubble chat-received">¿Haces trabajos en zona Palermo?</div>
+                    <div class="chat-bubble chat-sent">¡Hola! Sí, trabajo por esa zona. ¿Qué necesitas?</div>
+                </div>
+                <div class="p-3 bg-[#21262d] flex items-center">
+                    <button class="text-gray-400 p-2"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></button>
+                    <input type="text" placeholder="Escribe un mensaje..." class="flex-grow bg-[#0d1117] text-white rounded-full py-2 px-4 mx-2 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                    <button class="bg-indigo-600 p-2 rounded-full text-white"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg></button>
+                </div>
+            </div>
+
+            <!-- VISTA GEMINI AI (Overlay) -->
+            <div id="gemini-modal" class="absolute inset-0 bg-[#161b22] z-30 hidden flex flex-col">
+                <div class="p-4 bg-gradient-to-r from-purple-900 to-indigo-900 flex items-center shadow-md">
+                    <button onclick="closeGeminiModal()" class="text-white mr-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                    </button>
+                    <div class="flex-grow flex items-center justify-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-yellow-300"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
+                        <h3 class="text-white font-bold text-lg">Asistente Gemini</h3>
+                    </div>
+                </div>
+                <div id="gemini-chat-messages" class="flex-grow p-4 overflow-y-auto flex flex-col space-y-3">
+                     <!-- Mensaje de bienvenida -->
+                     <div class="chat-bubble gemini-bubble">
+                        Hola, soy tu experto en reparaciones. Dime qué problema tienes (ej: "se me rompió la canilla" o "la luz parpadea") y te diré a quién llamar.
+                    </div>
+                </div>
+                <div class="p-3 bg-[#21262d] flex items-center border-t border-gray-700">
+                    <input id="gemini-input" type="text" placeholder="Describe tu problema..." class="flex-grow bg-[#0d1117] text-white rounded-full py-2 px-4 mx-2 focus:outline-none focus:ring-1 focus:ring-purple-500 border border-gray-700">
+                    <button onclick="sendToGemini()" class="bg-purple-600 p-2 rounded-full text-white hover:bg-purple-500 transition shadow-lg">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- VISTA 3: MIS TRABAJOS -->
+            <div id="jobs-view" class="view p-4">
+                <h2 class="text-white text-2xl font-semibold mb-6">Mis Trabajos</h2>
+                <div class="space-y-4">
+                    <div class="bg-[#21262d] p-4 rounded-xl border-l-4 border-yellow-500 shadow-lg">
+                        <p class="text-sm text-yellow-400 font-semibold mb-1">En Curso</p>
+                        <h3 class="text-white font-bold mb-2">Reparación de Techo</h3>
+                        <p class="text-gray-400 text-sm">Techista: Martín González</p>
+                        <button class="mt-3 text-indigo-400 text-sm font-semibold" onclick="openChat('Martín González')">Enviar Mensaje</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VISTA 4: AJUSTES -->
+            <div id="settings-view" class="view p-4">
+                <h2 class="text-white text-2xl font-semibold mb-6">Cuenta</h2>
+                <div id="auth-info" class="bg-[#21262d] rounded-xl shadow-lg p-4 mb-4">
+                    <!-- Contenido dinámico (Perfil si logueado, o Login/Registro si no) -->
+                    <div id="profile-details">
+                        <p class="text-gray-400">Inicia sesión para guardar tus trabajos.</p>
+                        <button onclick="openAuthModal()" class="w-full mt-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold text-sm transition">Iniciar Sesión / Registrarse</button>
+                    </div>
+                </div>
+                
+                <div class="bg-[#21262d] rounded-xl shadow-lg divide-y divide-gray-700">
+                    <div class="p-4 text-white cursor-pointer hover:bg-[#30363d] transition" id="edit-profile-btn">Editar Perfil</div>
+                    <div class="p-4 text-white flex justify-between"><span>Modo Noche</span> <span class="text-indigo-400">On</span></div>
+                    <div class="p-4 text-red-400 cursor-pointer hover:bg-red-900/30 transition" onclick="signOutUser()">Cerrar Sesión</div>
+                </div>
+                <div class="mt-6 text-center text-xs text-gray-600">
+                    ID: <span id="current-user-id">...</span>
+                </div>
+            </div>
+
+        </main>
+        
+        <!-- MODAL DE AUTENTICACIÓN (NUEVO) -->
+        <div id="auth-modal" class="fixed inset-0 bg-black bg-opacity-70 z-40 hidden justify-center items-center p-4">
+            <div class="bg-[#161b22] p-6 rounded-2xl shadow-2xl w-full max-w-sm">
+                <h3 class="text-white text-2xl font-bold mb-4 text-center">Acceso Arreglados</h3>
+                <p id="auth-error-message" class="text-sm text-red-400 mb-3 hidden"></p>
+                <input id="auth-email" type="email" placeholder="Correo Electrónico" class="w-full p-3 mb-3 rounded-lg bg-[#21262d] text-white border border-gray-700 focus:border-indigo-500">
+                <input id="auth-password" type="password" placeholder="Contraseña" class="w-full p-3 mb-6 rounded-lg bg-[#21262d] text-white border border-gray-700 focus:border-indigo-500">
+                
+                <button onclick="handleAuth(true)" class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg mb-3 transition">Iniciar Sesión</button>
+                <button onclick="handleAuth(false)" class="w-full py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg transition">Crear Cuenta</button>
+
+                <button onclick="closeAuthModal()" class="w-full mt-4 text-gray-400 text-sm hover:text-white transition">Cancelar</button>
+            </div>
+        </div>
+
+
+        <!-- FOOTER NAV -->
+        <footer class="fixed bottom-0 w-full max-w-[420px] bg-[#21262d] border-t border-gray-700 p-2 flex justify-around items-center rounded-b-3xl z-30">
+            <button class="nav-button p-2 text-indigo-400 flex flex-col items-center" data-view="home">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-5.8-5.8"/><circle cx="10" cy="10" r="8"/></svg>
+                <span class="text-[10px] mt-1">Buscar</span>
+            </button>
+            <button class="nav-button p-2 text-gray-500 hover:text-white flex flex-col items-center" data-view="messages">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                <span class="text-[10px] mt-1">Mensajes</span>
+            </button>
+            <button class="nav-button p-2 text-gray-500 hover:text-white flex flex-col items-center" data-view="jobs">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M10 9l3-3l3 3m-6 6l3 3l3-3"/></svg>
+                <span class="text-[10px] mt-1">Trabajos</span>
+            </button>
+            <button class="nav-button p-2 text-gray-500 hover:text-white flex flex-col items-center" data-view="settings">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                <span class="text-[10px] mt-1">Cuenta</span>
+            </button>
+        </footer>
+
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, onSnapshot, collection, query, limit, setDoc, getDoc, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Variables de entorno
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        const apiKey = ""; // API Key de Gemini inyectada en runtime
+        
+        let db;
+        let auth;
+        let map;
+        let markers = [];
+        let isMapInitialized = false;
+        
+        // Paths de Firestore
+        const FIRESTORE_PATHS = {
+            PUBLIC_WORKERS: `/artifacts/${appId}/public/data/workers`,
+            PRIVATE_USER_DOC_PATH: (uid) => `/artifacts/${appId}/users/${uid}/data/user_profile`
+        };
+
+        // --- INICIALIZACIÓN DE FIREBASE ---
+        async function initializeFirebase() {
+            if (Object.keys(firebaseConfig).length === 0) return;
+            try {
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app); // Guardamos la instancia de Auth
+                
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
+                
+                onAuthStateChanged(auth, (user) => {
+                    const userIdDisplay = document.getElementById('current-user-id');
+                    const authInfoDiv = document.getElementById('auth-info');
+                    
+                    if (user) {
+                        userIdDisplay.textContent = user.uid.substring(0, 8) + '...';
+                        console.log("Usuario autenticado:", user.uid);
+                        
+                        // Actualizar UI de ajustes si está logueado
+                        authInfoDiv.innerHTML = `
+                             <h3 class="text-white font-bold mb-2">¡Bienvenido!</h3>
+                             <p class="text-gray-400 text-sm mb-4">Usted está conectado como: ${user.email || 'Anónimo'}</p>
+                             <h3 class="text-white font-bold mb-2">Plan Actual: Gratuito</h3>
+                             <p class="text-gray-400 text-sm mb-4">Acceso básico a listado de trabajadores.</p>
+                             <button class="w-full py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg font-bold text-sm">Pasar a Premium 💎</button>
+                        `;
+
+                        // Carga inicial (Todos)
+                        listenToWorkersData(db, 'all'); 
+                    } else {
+                        userIdDisplay.textContent = 'No autenticado';
+                         // Devolver UI de ajustes a la vista de login/registro
+                        authInfoDiv.innerHTML = `
+                            <h3 class="text-white font-bold mb-2">Plan Actual: Gratuito</h3>
+                            <p class="text-gray-400 text-sm mb-4">Inicia sesión para guardar tus trabajos.</p>
+                            <button onclick="openAuthModal()" class="w-full mt-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold text-sm transition">Iniciar Sesión / Registrarse</button>
+                        `;
+
+                        console.log("Usuario desconectado o esperando autenticación.");
+                    }
+                });
+            } catch (e) { console.error("Error en initializeFirebase:", e); }
+        }
+
+        // --- AUTHENTICATION LOGIC ---
+
+        window.openAuthModal = function() {
+            document.getElementById('auth-modal').classList.remove('hidden');
+            document.getElementById('auth-modal').classList.add('flex');
+            document.getElementById('auth-error-message').classList.add('hidden');
+        }
+
+        window.closeAuthModal = function() {
+            document.getElementById('auth-modal').classList.add('hidden');
+            document.getElementById('auth-modal').classList.remove('flex');
+            document.getElementById('auth-error-message').classList.add('hidden');
+        }
+
+        function displayAuthError(message) {
+            const errorDiv = document.getElementById('auth-error-message');
+            errorDiv.textContent = message;
+            errorDiv.classList.remove('hidden');
+        }
+
+        window.handleAuth = async function(isLogin) {
+            const email = document.getElementById('auth-email').value;
+            const password = document.getElementById('auth-password').value;
+            displayAuthError(""); // Limpiar errores
+
+            if (!email || !password) {
+                displayAuthError("Debe ingresar correo y contraseña.");
+                return;
+            }
+
+            try {
+                if (isLogin) {
+                    await signInWithEmailAndPassword(auth, email, password);
+                    console.log("Inicio de sesión exitoso.");
+                } else {
+                    await createUserWithEmailAndPassword(auth, email, password);
+                    console.log("Registro exitoso.");
+                }
+                closeAuthModal();
+            } catch (error) {
+                let errorMessage;
+                switch(error.code) {
+                    case 'auth/user-not-found':
+                    case 'auth/wrong-password':
+                        errorMessage = "Credenciales inválidas.";
+                        break;
+                    case 'auth/email-already-in-use':
+                        errorMessage = "El correo ya está registrado. Intente Iniciar Sesión.";
+                        break;
+                    case 'auth/weak-password':
+                        errorMessage = "Contraseña muy débil (mínimo 6 caracteres).";
+                        break;
+                    case 'auth/invalid-email':
+                        errorMessage = "El formato del correo es inválido.";
+                        break;
+                    default:
+                        errorMessage = "Error de autenticación. Intente más tarde.";
+                        break;
+                }
+                displayAuthError(errorMessage);
+                console.error("Auth Error:", error);
+            }
+        }
+        
+        window.signOutUser = async function() {
+            try {
+                await signOut(auth);
+                console.log("Usuario cerró sesión.");
+                // onAuthStateChanged se encargará de actualizar la UI
+            } catch (error) {
+                console.error("Error al cerrar sesión:", error);
+            }
+        }
+
+
+        // --- GEMINI AI LOGIC (No modificado en esta fase) ---
+        window.openGeminiModal = function() {
+            document.getElementById('gemini-modal').classList.remove('hidden');
+            document.getElementById('gemini-modal').classList.add('flex');
+        }
+
+        window.closeGeminiModal = function() {
+            document.getElementById('gemini-modal').classList.add('hidden');
+            document.getElementById('gemini-modal').classList.remove('flex');
+        }
+
+        window.sendToGemini = async function() {
+            const input = document.getElementById('gemini-input');
+            const userText = input.value.trim();
+            if (!userText) return;
+
+            addGeminiMessage(userText, 'chat-sent');
+            input.value = '';
+
+            const loadingBubble = document.createElement('div');
+            loadingBubble.className = 'chat-bubble gemini-bubble typing-indicator';
+            document.getElementById('gemini-chat-messages').appendChild(loadingBubble);
+            scrollToBottom('gemini-chat-messages');
+
+            try {
+                const prompt = `Actúa como un asistente experto para la app 'Arreglados'. El usuario tiene este problema: "${userText}".
+                1. Identifica cuál de estos oficios lo resuelve mejor: Carpintero, Electricista, Plomero, o Albañil. Si no es ninguno, usa "Otros".
+                2. Da un consejo muy breve (máximo 15 palabras).
+                3. Responde estrictamente en formato JSON: { "oficio": "...", "consejo": "..." }`;
+
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: prompt }] }],
+                        generationConfig: { responseMimeType: "application/json" }
+                    })
+                });
+
+                const data = await response.json();
+                const result = JSON.parse(data.candidates[0].content.parts[0].text);
+
+                loadingBubble.remove();
+                addGeminiMessage(`Consejo: ${result.consejo}`, 'gemini-bubble');
+
+                if (result.oficio && result.oficio !== 'Otros') {
+                    const actionBtn = document.createElement('button');
+                    actionBtn.className = 'mt-2 bg-white text-purple-700 font-bold py-2 px-4 rounded-lg shadow-sm text-sm self-start hover:bg-gray-100 transition';
+                    actionBtn.textContent = `🔍 Buscar ${result.oficio}s`;
+                    actionBtn.onclick = () => {
+                        closeGeminiModal();
+                        filterWorkers(result.oficio);
+                    };
+                    document.getElementById('gemini-chat-messages').appendChild(actionBtn);
+                    scrollToBottom('gemini-chat-messages');
+                }
+
+            } catch (e) {
+                console.error("Error Gemini:", e);
+                loadingBubble.remove();
+                addGeminiMessage("Lo siento, tuve un problema conectando con el servidor.", 'gemini-bubble');
+            }
+        }
+
+        function addGeminiMessage(text, styleClass) {
+            const container = document.getElementById('gemini-chat-messages');
+            const bubble = document.createElement('div');
+            bubble.className = `chat-bubble ${styleClass}`;
+            bubble.textContent = text;
+            container.appendChild(bubble);
+            scrollToBottom('gemini-chat-messages');
+        }
+
+        function scrollToBottom(id) {
+            const el = document.getElementById(id);
+            el.scrollTop = el.scrollHeight;
+        }
+
+        // --- FILTRADO Y MAPA ---
+        window.filterWorkers = function(category) {
+            if (!db) return;
+            const listTitle = document.getElementById('list-title');
+            listTitle.textContent = category === 'all' ? 'Trabajadores Destacados' : `Resultados: ${category}s`;
+            listenToWorkersData(db, category);
+        }
+
+        function listenToWorkersData(db, category) {
+            const workersColRef = collection(db, FIRESTORE_PATHS.PUBLIC_WORKERS);
+            let workersQuery;
+            if (category === 'all') {
+                workersQuery = query(workersColRef, limit(10));
+            } else {
+                workersQuery = query(workersColRef, where("oficio", "==", category), limit(10));
+            }
+            onSnapshot(workersQuery, (snapshot) => {
+                // Importante: La limpieza del mapa ahora se hace aquí
+                if (map) {
+                    markers.forEach(marker => map.removeLayer(marker));
+                    markers = [];
+                }
+                const workers = [];
+                snapshot.forEach(doc => workers.push({ id: doc.id, ...doc.data() }));
+                renderWorkers(workers);
+                updateMapMarkers(workers);
+                if (workers.length === 0 && category === 'all') {
+                    simulateInitialWorkers(db).catch(e => console.log("Error simulando datos:", e));
+                }
+            }, (error) => {
+                console.error("Error leyendo Firestore:", error);
+                document.getElementById('worker-list').innerHTML = `<div class="p-4 text-center text-gray-400">Error cargando datos.</div>`;
+            });
+        }
+
+        function renderWorkers(workers) {
+            const container = document.getElementById('worker-list');
+            container.innerHTML = '';
+            if (workers.length === 0) {
+                 container.innerHTML = '<p class="text-gray-500 text-center mt-4">No se encontraron trabajadores.</p>';
+                 return;
+            }
+            workers.forEach(w => {
+                const initials = (w.nombre || "NN").split(' ').map(n => n[0]).join('');
+                const html = `
+                    <div class="flex items-center bg-[#21262d] p-4 rounded-xl hover:bg-[#30363d] cursor-pointer" onclick="openChat('${w.nombre}')">
+                        <img class="h-12 w-12 rounded-full object-cover mr-4" src="https://placehold.co/48x48/6366f1/ffffff?text=${initials}" alt="">
+                        <div class="flex-grow">
+                            <p class="text-white font-semibold">${w.nombre} <span class="text-xs text-gray-500">(${w.oficio})</span></p>
+                            <div class="flex items-center text-sm mt-1">
+                                <span class="star-rating text-yellow-400">★★★★★</span> 
+                                <span class="text-gray-400 ml-1 text-xs">(${w.reviews || 0})</span>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-indigo-400 font-bold text-sm">${w.distancia || 0} km</span>
+                            <button class="block mt-1 text-xs bg-indigo-600 px-2 py-1 rounded text-white">Contactar</button>
+                        </div>
+                    </div>`;
+                container.innerHTML += html;
+            });
+        }
+
+        function updateMapMarkers(workers) {
+            if (!map) return;
+            workers.forEach(w => {
+                if(w.lat && w.lng) {
+                    const marker = L.marker([w.lat, w.lng]).addTo(map)
+                        .bindPopup(`<b>${w.nombre}</b><br>${w.oficio}`);
+                    markers.push(marker);
+                }
+            });
+        }
+
+        function initMap() {
+            if (isMapInitialized) return;
+            map = L.map('map').setView([-34.6037, -58.3816], 12);
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; OpenStreetMap contributors',
+                maxZoom: 19
+            }).addTo(map);
+            isMapInitialized = true;
+        }
+        
+        // --- CORRECCIÓN CLAVE AQUÍ ---
+        window.toggleMapView = function() {
+            const mapContainer = document.getElementById('map-container');
+            const listContainer = document.getElementById('worker-list-container');
+            const btn = document.getElementById('map-toggle-btn');
+            
+            if (mapContainer.classList.contains('hidden')) {
+                // 1. Mostrar Mapa (hacer el contenedor visible)
+                mapContainer.classList.remove('hidden');
+                listContainer.classList.add('hidden');
+                btn.textContent = "Ver Lista";
+
+                // 2. Inicializar el mapa si es la primera vez
+                if (!isMapInitialized) {
+                    initMap(); 
+                }
+                
+                // 3. CRÍTICO: Forzar a Leaflet a recalcular el tamaño y redibujar.
+                // Usamos un pequeño delay (150ms) para que el navegador termine de aplicar la visibilidad antes de calcular.
+                setTimeout(() => {
+                    if (map) {
+                        map.invalidateSize();
+                    }
+                }, 150);
+                
+            } else {
+                // Ocultar Lista
+                mapContainer.classList.add('hidden');
+                listContainer.classList.remove('hidden');
+                btn.textContent = "Ver Mapa";
+            }
+        };
+        // ------------------------------
+
+        window.openChat = function(name) {
+            document.getElementById('chat-name').textContent = name;
+            document.getElementById('chat-avatar').src = `https://placehold.co/48x48/6366f1/ffffff?text=${name.charAt(0)}`;
+            document.getElementById('chat-detail-view').classList.remove('hidden');
+            document.getElementById('chat-detail-view').classList.add('flex');
+        };
+
+        window.closeChat = function() {
+            document.getElementById('chat-detail-view').classList.add('hidden');
+            document.getElementById('chat-detail-view').classList.remove('flex');
+        };
+
+        window.showView = function(viewId) {
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+            document.getElementById(viewId + '-view').classList.add('active');
+            
+            document.querySelectorAll('.nav-button').forEach(btn => {
+                btn.classList.remove('text-indigo-400');
+                btn.classList.add('text-gray-500');
+            });
+            const activeBtn = document.querySelector(`.nav-button[data-view='${viewId}']`);
+            if(activeBtn) {
+                activeBtn.classList.remove('text-gray-500');
+                activeBtn.classList.add('text-indigo-400');
+            }
+            
+            const mapBtn = document.getElementById('map-toggle-btn');
+            const title = document.getElementById('header-title');
+            
+            if(viewId === 'home') {
+                mapBtn.classList.remove('hidden');
+                title.textContent = 'Arreglados';
+                if (!document.getElementById('map-container').classList.contains('hidden') && isMapInitialized) setTimeout(() => map.invalidateSize(), 100);
+            } else {
+                mapBtn.classList.add('hidden');
+                if(viewId === 'messages') title.textContent = 'Mensajes';
+                if(viewId === 'jobs') title.textContent = 'Mis Trabajos';
+                if(viewId === 'settings') {
+                    const user = auth?.currentUser;
+                    const authInfoDiv = document.getElementById('auth-info');
+
+                    if (!user || user.isAnonymous) {
+                         authInfoDiv.innerHTML = `
+                            <h3 class="text-white font-bold mb-2">Plan Actual: Gratuito</h3>
+                            <p class="text-gray-400 text-sm mb-4">Inicia sesión para guardar tus trabajos.</p>
+                            <button onclick="openAuthModal()" class="w-full mt-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold text-sm transition">Iniciar Sesión / Registrarse</button>
+                        `;
+                    }
+                    title.textContent = 'Cuenta';
+                }
+            }
+        };
+
+        async function simulateInitialWorkers(db) {
+             const batch = [
+                { id: "w1", nombre: "Juan Pérez", oficio: "Electricista", reviews: 45, rating: 5, distancia: 2.1, lat: -34.6037, lng: -58.3816 },
+                { id: "w2", nombre: "María Gómez", oficio: "Plomero", reviews: 12, rating: 4.2, distancia: 3.5, lat: -34.5997, lng: -58.4000 },
+                { id: "w3", nombre: "Roberto Díaz", oficio: "Carpintero", reviews: 98, rating: 4.8, distancia: 5.0, lat: -34.6200, lng: -58.3700 },
+                { id: "w4", nombre: "Ana López", oficio: "Albañil", reviews: 20, rating: 4.5, distancia: 7.0, lat: -34.6150, lng: -58.3900 }
+             ];
+             for(let w of batch) await setDoc(doc(db, FIRESTORE_PATHS.PUBLIC_WORKERS, w.id), w);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeFirebase();
+            document.querySelectorAll('.nav-button').forEach(button => {
+                button.addEventListener('click', (e) => showView(e.currentTarget.getAttribute('data-view')));
+            });
+            document.getElementById('map-toggle-btn').classList.remove('hidden');
+            showView('home');
+        });
+    </script>
+</body>
+</html>
