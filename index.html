@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+TYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
@@ -771,6 +771,17 @@
         document.addEventListener('DOMContentLoaded', () => {
             updateAuthModalButtons(false); // Deshabilitar botones al inicio
             initializeFirebase();
+            
+            // FALLBACK CRÍTICO: Si initializeFirebase no establece isAuthAppReady en 2 segundos,
+            // lo forzamos para que el usuario pueda intentar el login/registro manual.
+            setTimeout(() => {
+                if (!isAuthAppReady) {
+                    isAuthAppReady = true;
+                    updateAuthModalButtons(true);
+                    console.error("FIREBASE FALLBACK: Forced Auth readiness. Initialization may have failed.");
+                }
+            }, 2000); 
+
             document.querySelectorAll('.nav-button').forEach(button => {
                 button.addEventListener('click', (e) => showView(e.currentTarget.getAttribute('data-view')));
             });
