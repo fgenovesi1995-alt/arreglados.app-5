@@ -1,4 +1,4 @@
-TYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
@@ -140,7 +140,7 @@ TYPE html>
                 </div>
             </div>
 
-            <!-- VISTA PERFIL DEL TRABAJADOR (NUEVO) -->
+            <!-- VISTA PERFIL DEL TRABAJADOR -->
             <div id="worker-profile-view" class="view p-4">
                 <button onclick="showView('home')" class="text-gray-400 mb-4 flex items-center hover:text-white transition">
                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
@@ -148,7 +148,6 @@ TYPE html>
                 </button>
                 
                 <div id="profile-content" class="bg-[#21262d] p-6 rounded-2xl shadow-xl">
-                    <!-- Contenido dinámico del perfil -->
                     <div class="flex flex-col items-center text-center mb-6">
                         <img id="worker-avatar-profile" class="h-24 w-24 rounded-full object-cover mb-4 border-4 border-indigo-500" src="" alt="Avatar">
                         <h2 id="worker-name-profile" class="text-3xl font-bold text-white">Cargando...</h2>
@@ -162,7 +161,7 @@ TYPE html>
                     <div class="space-y-4 text-white">
                         <h3 class="text-xl font-semibold border-b border-gray-700 pb-2 mb-3">Acerca de mí</h3>
                         <p id="worker-bio-profile" class="text-gray-300 text-sm leading-relaxed">
-                            {Bio del trabajador simulada}
+                            Cargando biografía...
                         </p>
                         <div class="flex justify-between border-t border-gray-700 pt-4">
                             <span class="text-gray-400">Distancia Estimada:</span>
@@ -171,7 +170,6 @@ TYPE html>
                     </div>
                 </div>
 
-                <!-- Botones de Acción -->
                 <div class="mt-6 flex gap-4">
                     <button onclick="startChatFromProfile()" class="flex-1 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition shadow-lg">
                         Iniciar Chat
@@ -180,47 +178,17 @@ TYPE html>
                         Pedir Presupuesto
                     </button>
                 </div>
-                
-                <!-- Sección de Reseñas (Simulada) -->
-                <div class="mt-8">
-                    <h3 class="text-white text-xl font-semibold mb-4 border-b border-gray-700 pb-2">Últimas Reseñas</h3>
-                    <div class="space-y-4">
-                        <div class="bg-[#21262d] p-4 rounded-lg shadow-md">
-                            <p class="text-yellow-400 text-sm">★★★★★</p>
-                            <p class="text-gray-300 text-sm mt-1">"Juan me solucionó el corte de luz rapidísimo. Muy profesional."</p>
-                            <p class="text-gray-500 text-xs mt-2">- Cliente Feliz</p>
-                        </div>
-                        <div class="bg-[#21262d] p-4 rounded-lg shadow-md">
-                            <p class="text-yellow-400 text-sm">★★★★☆</p>
-                            <p class="text-gray-300 text-sm mt-1">"El trabajo de plomería fue excelente, aunque llegó 10 minutos tarde."</p>
-                            <p class="text-gray-500 text-xs mt-2">- Cliente A.</p>
-                        </div>
-                    </div>
-                </div>
-                
             </div>
             
             <!-- VISTA 2: MENSAJES -->
             <div id="messages-view" class="view p-4">
                 <h2 class="text-white text-2xl font-semibold mb-6">Mensajes</h2>
-                <div class="space-y-2">
-                    <div class="flex items-center bg-[#21262d] p-4 rounded-xl cursor-pointer hover:bg-[#30363d] transition" onclick="openChat('Juan Pérez')">
-                        <div class="relative">
-                            <img class="h-12 w-12 rounded-full object-cover" src="https://placehold.co/48x48/6366f1/ffffff?text=JP" alt="">
-                            <span class="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-[#21262d] rounded-full"></span>
-                        </div>
-                        <div class="ml-4 flex-grow">
-                            <div class="flex justify-between items-baseline">
-                                <h3 class="text-white font-semibold">Juan Pérez</h3>
-                                <span class="text-xs text-gray-500">10:30 AM</span>
-                            </div>
-                            <p class="text-gray-400 text-sm truncate">Hola, ¿a qué hora podrías pasar hoy?</p>
-                        </div>
-                    </div>
+                <div id="message-list" class="space-y-2">
+                    <p class="text-gray-500 text-center">No tienes mensajes aún.</p>
                 </div>
             </div>
 
-            <!-- VISTA DETALLE CHAT (Overlay) -->
+            <!-- VISTA DETALLE CHAT -->
             <div id="chat-detail-view" class="absolute inset-0 bg-[#161b22] z-20 hidden flex flex-col">
                 <div class="p-4 bg-[#21262d] flex items-center shadow-md">
                     <button onclick="closeChat()" class="text-gray-400 mr-4">
@@ -232,28 +200,19 @@ TYPE html>
                         <p class="text-xs text-green-400">En línea</p>
                     </div>
                 </div>
-                <div id="chat-messages" class="flex-grow p-4 overflow-y-auto flex flex-col">
-                    <div class="chat-bubble chat-received">Hola, vi tu perfil en Arreglados.</div>
-                    <div class="chat-bubble chat-received">¿Haces trabajos en zona Palermo?</div>
-                    <div class="chat-bubble chat-sent">¡Hola! Sí, trabajo por esa zona. ¿Qué necesitas?</div>
+                <div id="chat-messages" class="flex-grow p-4 overflow-y-auto flex flex-col space-y-2">
                 </div>
                 <div class="p-3 bg-[#21262d] flex items-center">
-                    <button class="text-gray-400 p-2"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></button>
-                    <input type="text" placeholder="Escribe un mensaje..." class="flex-grow bg-[#0d1117] text-white rounded-full py-2 px-4 mx-2 focus:outline-none focus:ring-1 focus:ring-indigo-500">
-                    <button class="bg-indigo-600 p-2 rounded-full text-white"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg></button>
+                    <input id="chat-input" type="text" placeholder="Escribe un mensaje..." class="flex-grow bg-[#0d1117] text-white rounded-full py-2 px-4 mx-2 focus:outline-none">
+                    <button onclick="sendMessage()" class="bg-indigo-600 p-2 rounded-full text-white"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg></button>
                 </div>
             </div>
             
             <!-- VISTA 3: MIS TRABAJOS -->
             <div id="jobs-view" class="view p-4">
                 <h2 class="text-white text-2xl font-semibold mb-6">Mis Trabajos</h2>
-                <div class="space-y-4">
-                    <div class="bg-[#21262d] p-4 rounded-xl border-l-4 border-yellow-500 shadow-lg">
-                        <p class="text-sm text-yellow-400 font-semibold mb-1">En Curso</p>
-                        <h3 class="text-white font-bold mb-2">Reparación de Techo</h3>
-                        <p class="text-gray-400 text-sm">Techista: Martín González</p>
-                        <button class="mt-3 text-indigo-400 text-sm font-semibold" onclick="openChat('Martín González')">Enviar Mensaje</button>
-                    </div>
+                <div id="jobs-list" class="space-y-4">
+                    <p class="text-gray-500 text-center">Aún no has solicitado servicios.</p>
                 </div>
             </div>
 
@@ -261,41 +220,35 @@ TYPE html>
             <div id="settings-view" class="view p-4">
                 <h2 class="text-white text-2xl font-semibold mb-6">Cuenta</h2>
                 <div id="auth-info" class="bg-[#21262d] rounded-xl shadow-lg p-4 mb-4">
-                    <!-- Contenido dinámico (Perfil si logueado, o Login/Registro si no) -->
-                    <div id="profile-details">
-                        <p class="text-gray-400">Inicia sesión para guardar tus trabajos.</p>
-                        <button onclick="openAuthModal()" class="w-full mt-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold text-sm transition">Iniciar Sesión / Registrarse</button>
-                    </div>
+                    <p class="text-gray-400">Cargando información...</p>
                 </div>
                 
                 <div class="bg-[#21262d] rounded-xl shadow-lg divide-y divide-gray-700">
-                    <div class="p-4 text-white cursor-pointer hover:bg-[#30363d] transition" id="edit-profile-btn">Editar Perfil</div>
-                    <div class="p-4 text-white flex justify-between"><span>Modo Noche</span> <span class="text-indigo-400">On</span></div>
-                    <div class="p-4 text-red-400 cursor-pointer hover:bg-red-900/30 transition" onclick="signOutUser()">Cerrar Sesión</div>
+                    <div class="p-4 text-white cursor-pointer hover:bg-[#30363d] transition">Editar Perfil</div>
+                    <div class="p-4 text-white flex justify-between"><span>Notificaciones</span> <span class="text-indigo-400">On</span></div>
+                    <div id="sign-out-btn" class="p-4 text-red-400 cursor-pointer hover:bg-red-900/30 transition hidden" onclick="signOutUser()">Cerrar Sesión</div>
                 </div>
                 <div class="mt-6 text-center text-xs text-gray-600">
-                    ID: <span id="current-user-id">...</span>
+                    ID Proyecto: <span id="current-project-id">...</span>
                 </div>
             </div>
 
         </main>
         
-        <!-- MODAL DE AUTENTICACIÓN (NUEVO) -->
+        <!-- MODAL DE AUTENTICACIÓN -->
         <div id="auth-modal" class="fixed inset-0 bg-black bg-opacity-70 z-40 hidden justify-center items-center p-4">
             <div class="bg-[#161b22] p-6 rounded-2xl shadow-2xl w-full max-w-sm">
                 <h3 class="text-white text-2xl font-bold mb-4 text-center">Acceso Arreglados</h3>
-                <p id="auth-error-message" class="text-sm text-red-400 mb-3 hidden"></p>
+                <p id="auth-error-message" class="text-sm text-red-400 mb-3 hidden text-center"></p>
                 <input id="auth-email" type="email" placeholder="Correo Electrónico" class="w-full p-3 mb-3 rounded-lg bg-[#21262d] text-white border border-gray-700 focus:border-indigo-500">
                 <input id="auth-password" type="password" placeholder="Contraseña" class="w-full p-3 mb-6 rounded-lg bg-[#21262d] text-white border border-gray-700 focus:border-indigo-500">
                 
-                <!-- IDs añadidas para control de estado -->
-                <button id="login-button" onclick="handleAuth(true)" disabled class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg mb-3 transition disabled:opacity-50">Iniciar Sesión</button>
-                <button id="register-button" onclick="handleAuth(false)" disabled class="w-full py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg transition disabled:opacity-50">Crear Cuenta</button>
+                <button id="login-button" onclick="handleAuth(true)" class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg mb-3 transition disabled:opacity-50">Iniciar Sesión</button>
+                <button id="register-button" onclick="handleAuth(false)" class="w-full py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg transition disabled:opacity-50">Crear Cuenta</button>
 
                 <button onclick="closeAuthModal()" class="w-full mt-4 text-gray-400 text-sm hover:text-white transition">Cancelar</button>
             </div>
         </div>
-
 
         <!-- FOOTER NAV -->
         <footer class="fixed bottom-0 w-full max-w-[420px] bg-[#21262d] border-t border-gray-700 p-2 flex justify-around items-center rounded-b-3xl z-30">
@@ -324,469 +277,231 @@ TYPE html>
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, onSnapshot, collection, query, limit, setDoc, getDoc, where, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Variables de entorno
+        // Configuración
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-        
-        let db;
-        let auth;
-        let map;
-        let markers = [];
-        let isMapInitialized = false;
-        let currentWorker = null; // Variable para guardar el perfil del trabajador seleccionado
-        
-        // Bandera de estado
-        let isAuthAppReady = false; 
 
-        // Paths de Firestore
-        const FIRESTORE_PATHS = {
-            PUBLIC_WORKERS: `/artifacts/${appId}/public/data/workers`,
-            PRIVATE_USER_DOC_PATH: (uid) => `/artifacts/${appId}/users/${uid}/data/user_profile`
-        };
+        // INICIALIZACIÓN INMEDIATA (Solución al error 'app' undefined)
+        let app, db, auth;
+        if (firebaseConfig.apiKey) {
+            app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            auth = getAuth(app);
+            document.getElementById('current-project-id').textContent = firebaseConfig.projectId;
+        }
 
-        // Bandera para asegurar que la simulación solo se ejecute una vez
+        let isAuthAppReady = false;
+        let currentWorkerData = null;
         let workersSimulationDone = false;
 
-        // Función para actualizar el estado de los botones del modal de autenticación
-        function updateAuthModalButtons(ready) {
+        const FIRESTORE_PATHS = {
+            PUBLIC_WORKERS: `/artifacts/${appId}/public/data/workers`
+        };
+
+        // Función para actualizar botones
+        window.updateAuthModalButtons = function(ready) {
             const loginBtn = document.getElementById('login-button');
             const registerBtn = document.getElementById('register-button');
             if (loginBtn && registerBtn) {
                 loginBtn.disabled = !ready;
                 registerBtn.disabled = !ready;
-                if (!ready) {
-                    loginBtn.textContent = 'Cargando Autenticación...';
-                    registerBtn.textContent = 'Cargando Autenticación...';
-                } else {
-                    loginBtn.textContent = 'Iniciar Sesión';
-                    registerBtn.textContent = 'Crear Cuenta';
-                }
+                loginBtn.textContent = ready ? 'Iniciar Sesión' : 'Cargando...';
+                registerBtn.textContent = ready ? 'Crear Cuenta' : 'Cargando...';
             }
-        }
+        };
 
+        // --- INICIALIZACIÓN FIREBASE ASÍNCROMA ---
+        async function startApp() {
+            if (!auth) {
+                console.error("Firebase no configurado.");
+                return;
+            }
 
-        // --- INICIALIZACIÓN DE FIREBASE ---
-        async function initializeFirebase() {
-            if (Object.keys(firebaseConfig).length === 0) return;
             try {
-                const app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
-                auth = getAuth(app); 
-                
-                // CRÍTICO: Activamos la bandera y los botones inmediatamente después de obtener 'auth',
-                // para que cualquier fallo posterior no bloquee la UI de login/registro.
-                isAuthAppReady = true; 
-                updateAuthModalButtons(true);
-                console.log("FIREBASE: Auth system is now ready (buttons enabled).");
-                
-                try {
-                    if (initialAuthToken) {
-                        await signInWithCustomToken(auth, initialAuthToken);
-                    } else {
-                        await signInAnonymously(auth);
-                    }
-                } catch (authError) {
-                    console.error("Error durante el inicio de sesión inicial (anónimo/token):", authError);
-                    // No bloqueamos aquí, el proceso debe continuar
+                // Intentar login inicial
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
                 }
-                
-                
-                // CRÍTICO: Ejecutar la simulación inmediatamente después de inicializar db/auth,
-                // para que los trabajadores estén disponibles incluso para usuarios anónimos.
-                if (!workersSimulationDone) {
-                    await simulateInitialWorkers(db);
-                    workersSimulationDone = true;
-                }
-                
-                onAuthStateChanged(auth, (user) => {
-                    const userIdDisplay = document.getElementById('current-user-id');
-                    const authInfoDiv = document.getElementById('auth-info');
-                    
-                    if (user && !user.isAnonymous) { // Solo si está logueado con correo/pass
-                        userIdDisplay.textContent = user.uid.substring(0, 8) + '...';
-                        
-                        // Actualizar UI de ajustes si está logueado
-                        authInfoDiv.innerHTML = `
-                             <h3 class="text-white font-bold mb-2">¡Bienvenido!</h3>
-                             <p class="text-gray-400 text-sm mb-4">Usted está conectado como: ${user.email}</p>
-                             <h3 class="text-white font-bold mb-2">Plan Actual: Gratuito</h3>
-                             <p class="text-gray-400 text-sm mb-4">Acceso básico a listado de trabajadores.</p>
-                             <button class="w-full py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg font-bold text-sm">Pasar a Premium 💎</button>
-                        `;
+            } catch (e) {
+                console.warn("Login inicial falló, continuando como invitado.", e);
+            }
 
-                        listenToWorkersData(db, 'all'); 
-                    } else {
-                        userIdDisplay.textContent = 'No autenticado';
-                         // Devolver UI de ajustes a la vista de login/registro
-                        authInfoDiv.innerHTML = `
-                            <h3 class="text-white font-bold mb-2">Plan Actual: Gratuito</h3>
-                            <p class="text-gray-400 text-sm mb-4">Inicia sesión para guardar tus trabajos.</p>
-                            <button onclick="openAuthModal()" class="w-full mt-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold text-sm transition">Iniciar Sesión / Registrarse</button>
-                        `;
-                        listenToWorkersData(db, 'all'); // Recargar datos para anónimos
-                    }
-                });
-            } catch (e) { 
-                console.error("Error crítico en initializeFirebase:", e); 
-                // Forzamos la habilitación para que el usuario pueda intentar el login/registro
-                isAuthAppReady = true; 
-                updateAuthModalButtons(true); 
+            isAuthAppReady = true;
+            updateAuthModalButtons(true);
+
+            // Simulación de datos
+            if (!workersSimulationDone) {
+                await simulateInitialWorkers(db);
+                workersSimulationDone = true;
+            }
+
+            onAuthStateChanged(auth, (user) => {
+                updateUIForUser(user);
+                listenToWorkersData(db, 'all');
+            });
+        }
+
+        function updateUIForUser(user) {
+            const authInfoDiv = document.getElementById('auth-info');
+            const signOutBtn = document.getElementById('sign-out-btn');
+            
+            if (user && !user.isAnonymous) {
+                authInfoDiv.innerHTML = `
+                    <p class="text-white font-bold">Sesión Iniciada</p>
+                    <p class="text-gray-400 text-sm">${user.email}</p>
+                `;
+                signOutBtn.classList.remove('hidden');
+            } else {
+                authInfoDiv.innerHTML = `
+                    <p class="text-gray-400 text-sm mb-4">Inicia sesión para chatear con profesionales.</p>
+                    <button onclick="openAuthModal()" class="w-full py-2 bg-indigo-600 text-white rounded-lg font-bold">Entrar</button>
+                `;
+                signOutBtn.classList.add('hidden');
             }
         }
 
-        // --- AUTHENTICATION LOGIC ---
-
-        window.openAuthModal = function() {
+        // --- AUTH HANDLERS ---
+        window.openAuthModal = () => {
             document.getElementById('auth-modal').classList.remove('hidden');
             document.getElementById('auth-modal').classList.add('flex');
-            document.getElementById('auth-error-message').classList.add('hidden');
-        }
+        };
 
-        window.closeAuthModal = function() {
+        window.closeAuthModal = () => {
             document.getElementById('auth-modal').classList.add('hidden');
             document.getElementById('auth-modal').classList.remove('flex');
             document.getElementById('auth-error-message').classList.add('hidden');
-        }
-
-        function displayAuthError(message) {
-            const errorDiv = document.getElementById('auth-error-message');
-            errorDiv.textContent = message;
-            errorDiv.classList.remove('hidden');
-        }
+        };
 
         window.handleAuth = async function(isLogin) {
             const email = document.getElementById('auth-email').value;
             const password = document.getElementById('auth-password').value;
-            displayAuthError("");
-
-            if (!email || !password) {
-                displayAuthError("Debe ingresar correo y contraseña.");
-                return;
-            }
+            const errorEl = document.getElementById('auth-error-message');
             
-            // CRÍTICO: Usamos el nuevo estado para detener la ejecución si no está listo
-            if (!isAuthAppReady) { 
-                 displayAuthError("Error: El servicio de autenticación se está cargando, intente nuevamente en un momento.");
-                 console.error("Auth object is not fully initialized. Blocking.");
-                 return;
-            }
+            errorEl.classList.add('hidden');
+            if (!email || !password) return;
 
             try {
                 if (isLogin) {
-                    console.log("Attempting sign in..."); // LOG DE CONTROL
                     await signInWithEmailAndPassword(auth, email, password);
                 } else {
-                    console.log("Attempting user creation..."); // LOG DE CONTROL
                     await createUserWithEmailAndPassword(auth, email, password);
-                    
-                    displayAuthError("¡Registro exitoso! Iniciando sesión...");
-                    document.getElementById('auth-error-message').classList.remove('text-red-400');
-                    document.getElementById('auth-error-message').classList.add('text-green-400');
-                    
-                    await new Promise(resolve => setTimeout(resolve, 1000)); 
                 }
                 closeAuthModal();
             } catch (error) {
-                document.getElementById('auth-error-message').classList.add('text-red-400');
-                document.getElementById('auth-error-message').classList.remove('text-green-400');
-
-                let errorMessage;
-                switch(error.code) {
-                    case 'auth/user-not-found':
-                    case 'auth/wrong-password':
-                        errorMessage = "Credenciales inválidas o usuario no encontrado.";
-                        break;
-                    case 'auth/email-already-in-use':
-                        errorMessage = "El correo ya está registrado. Intente Iniciar Sesión.";
-                        break;
-                    case 'auth/weak-password':
-                        errorMessage = "Contraseña muy débil (mínimo 6 caracteres).";
-                        break;
-                    case 'auth/invalid-email':
-                        errorMessage = "El formato del correo es inválido.";
-                        break;
-                    case 'auth/operation-not-allowed':
-                        errorMessage = "ERROR CRÍTICO: El método de 'Correo/Contraseña' NO está habilitado en su Consola de Firebase.";
-                        break;
-                    default:
-                        errorMessage = `Error desconocido (${error.code}). Verifique su conexión.`;
-                        break;
-                }
-                displayAuthError(errorMessage);
+                errorEl.textContent = `Error: ${error.code || error.message}`;
+                errorEl.classList.remove('hidden');
                 console.error("Auth Error:", error);
             }
-        }
-        
-        window.signOutUser = async function() {
-            try {
-                await signOut(auth);
-            } catch (error) {
-                console.error("Error al cerrar sesión:", error);
-            }
-        }
-
-
-        // --- UTILS (Sin cambios) ---
-
-        function scrollToBottom(id) {
-            const el = document.getElementById(id);
-            el.scrollTop = el.scrollHeight;
-        }
-
-        // --- WORKER PROFILE LOGIC ---
-        window.openWorkerProfile = async function(workerId) {
-            if (!db) return;
-            
-            try {
-                const workerDocRef = doc(db, FIRESTORE_PATHS.PUBLIC_WORKERS, workerId);
-                const docSnap = await getDoc(workerDocRef);
-                
-                if (docSnap.exists()) {
-                    const workerData = docSnap.data();
-                    currentWorker = workerData; 
-                    
-                    const initials = (workerData.nombre || "NN").split(' ').map(n => n[0]).join('');
-                    
-                    // Actualizar la vista de perfil con los datos
-                    document.getElementById('worker-name-profile').textContent = workerData.nombre;
-                    document.getElementById('worker-oficio-profile').textContent = workerData.oficio;
-                    document.getElementById('worker-avatar-profile').src = `https://placehold.co/96x96/4f46e5/ffffff?text=${initials}`;
-                    document.getElementById('worker-distance-profile').textContent = `${workerData.distancia} km`;
-                    document.getElementById('worker-reviews-profile').textContent = `(${workerData.reviews} reseñas)`;
-                    
-                    // Simular Bio
-                    document.getElementById('worker-bio-profile').textContent = 
-                        `Soy ${workerData.oficio} con ${workerData.reviews} trabajos terminados. 
-                        Me especializo en instalaciones complejas y trabajo rápido.
-                        ¡Garantía de satisfacción o devolución de dinero!`;
-                        
-                    // Mostrar la vista de perfil
-                    showView('worker-profile');
-                } else {
-                    console.error("No se encontró el trabajador:", workerId);
-                }
-            } catch (e) {
-                console.error("Error al cargar perfil:", e);
-            }
         };
 
-        window.startChatFromProfile = function() {
-            if (!auth?.currentUser || auth.currentUser.isAnonymous) {
-                // VERIFICACIÓN CRÍTICA: Forzar Login si el usuario es anónimo o no está logueado
-                openAuthModal();
-                displayAuthError("Necesitas iniciar sesión para contactar a un profesional.");
-                return;
-            }
+        window.signOutUser = () => signOut(auth);
 
-            if (currentWorker) {
-                // Lógica de inicio de chat real (futura implementación)
-                openChat(currentWorker.nombre);
-            } else {
-                console.error("No hay trabajador seleccionado.");
-            }
-        };
-
-
-        // --- FILTRADO Y MAPA ---
+        // --- WORKERS LOGIC ---
         window.filterWorkers = function(category) {
             if (!db) return;
-            const listTitle = document.getElementById('list-title');
-            listTitle.textContent = category === 'all' ? 'Trabajadores Destacados' : `Resultados: ${category}s`;
+            document.getElementById('list-title').textContent = category === 'all' ? 'Trabajadores Destacados' : `Resultados: ${category}`;
             listenToWorkersData(db, category);
-        }
+        };
 
-        function listenToWorkersData(db, category) {
-            const workersColRef = collection(db, FIRESTORE_PATHS.PUBLIC_WORKERS);
-            let workersQuery;
-            if (category === 'all') {
-                workersQuery = query(workersColRef, limit(10));
-            } else {
-                workersQuery = query(workersColRef, where("oficio", "==", category), limit(10));
-            }
-            onSnapshot(workersQuery, (snapshot) => {
-                if (map) {
-                    markers.forEach(marker => map.removeLayer(marker));
-                    markers = [];
-                }
+        function listenToWorkersData(database, category) {
+            const colRef = collection(database, FIRESTORE_PATHS.PUBLIC_WORKERS);
+            let q = category === 'all' ? query(colRef, limit(10)) : query(colRef, where("oficio", "==", category), limit(10));
+
+            onSnapshot(q, (snapshot) => {
                 const workers = [];
                 snapshot.forEach(doc => workers.push({ id: doc.id, ...doc.data() }));
                 renderWorkers(workers);
-                updateMapMarkers(workers);
-            }, (error) => {
-                console.error("Error leyendo Firestore:", error);
-                document.getElementById('worker-list').innerHTML = `<div class="p-4 text-center text-gray-400">Error cargando datos.</div>`;
-            });
+            }, (err) => console.error("Error Firestore:", err));
         }
 
         function renderWorkers(workers) {
             const container = document.getElementById('worker-list');
-            container.innerHTML = '';
-            if (workers.length === 0) {
-                 container.innerHTML = '<p class="text-gray-500 text-center mt-4">No se encontraron trabajadores.</p>';
-                 return;
-            }
+            container.innerHTML = workers.length ? '' : '<p class="text-center text-gray-500">No hay profesionales.</p>';
+            
             workers.forEach(w => {
-                const initials = (w.nombre || "NN").split(' ').map(n => n[0]).join('');
-                const html = `
+                const initials = w.nombre.split(' ').map(n => n[0]).join('');
+                container.innerHTML += `
                     <div class="flex items-center bg-[#21262d] p-4 rounded-xl hover:bg-[#30363d] cursor-pointer" onclick="openWorkerProfile('${w.id}')">
-                        <img class="h-12 w-12 rounded-full object-cover mr-4" src="https://placehold.co/48x48/6366f1/ffffff?text=${initials}" alt="">
+                        <img class="h-12 w-12 rounded-full object-cover mr-4" src="https://placehold.co/48x48/6366f1/ffffff?text=${initials}">
                         <div class="flex-grow">
-                            <p class="text-white font-semibold">${w.nombre} <span class="text-xs text-gray-500">(${w.oficio})</span></p>
-                            <div class="flex items-center text-sm mt-1">
-                                <span class="star-rating text-yellow-400">★★★★★</span> 
-                                <span class="text-gray-400 ml-1 text-xs">(${w.reviews || 0})</span>
-                            </div>
+                            <p class="text-white font-semibold">${w.nombre}</p>
+                            <p class="text-indigo-400 text-xs">${w.oficio}</p>
                         </div>
                         <div class="text-right">
-                            <span class="text-indigo-400 font-bold text-sm">${w.distancia || 0} km</span>
-                            <button class="block mt-1 text-xs bg-indigo-600 px-2 py-1 rounded text-white">Ver Perfil</button>
+                            <span class="text-yellow-400 text-xs">★ ${w.rating || 5}</span>
+                            <p class="text-gray-500 text-[10px]">${w.distancia} km</p>
                         </div>
                     </div>`;
-                container.innerHTML += html;
             });
         }
 
-        function updateMapMarkers(workers) {
-            if (!map) return;
-            workers.forEach(w => {
-                if(w.lat && w.lng) {
-                    const marker = L.marker([w.lat, w.lng]).addTo(map)
-                        .bindPopup(`<b>${w.nombre}</b><br>${w.oficio}`);
-                    markers.push(marker);
-                }
-            });
-        }
-
-        function initMap() {
-            if (isMapInitialized) return;
-            map = L.map('map').setView([-34.6037, -58.3816], 12);
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-                attribution: '&copy; OpenStreetMap contributors',
-                maxZoom: 19
-            }).addTo(map);
-            isMapInitialized = true;
-        }
-        
-        window.toggleMapView = function() {
-            const mapContainer = document.getElementById('map-container');
-            const listContainer = document.getElementById('worker-list-container');
-            const btn = document.getElementById('map-toggle-btn');
-            
-            if (mapContainer.classList.contains('hidden')) {
-                mapContainer.classList.remove('hidden');
-                listContainer.classList.add('hidden');
-                btn.textContent = "Ver Lista";
-
-                if (!isMapInitialized) {
-                    initMap(); 
-                }
-                
-                setTimeout(() => {
-                    if (map) {
-                        map.invalidateSize();
-                    }
-                }, 150);
-                
-            } else {
-                mapContainer.classList.add('hidden');
-                listContainer.classList.remove('hidden');
-                btn.textContent = "Ver Mapa";
+        window.openWorkerProfile = async (id) => {
+            const docSnap = await getDoc(doc(db, FIRESTORE_PATHS.PUBLIC_WORKERS, id));
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                currentWorkerData = data;
+                const initials = data.nombre.split(' ').map(n => n[0]).join('');
+                document.getElementById('worker-name-profile').textContent = data.nombre;
+                document.getElementById('worker-oficio-profile').textContent = data.oficio;
+                document.getElementById('worker-avatar-profile').src = `https://placehold.co/96x96/4f46e5/ffffff?text=${initials}`;
+                document.getElementById('worker-bio-profile').textContent = `Profesional con amplia experiencia en ${data.oficio}. Disponible para trabajos inmediatos en la zona.`;
+                document.getElementById('worker-distance-profile').textContent = `${data.distancia} km`;
+                showView('worker-profile');
             }
         };
 
-        window.openChat = function(name) {
-            document.getElementById('chat-name').textContent = name;
-            document.getElementById('chat-avatar').src = `https://placehold.co/48x48/6366f1/ffffff?text=${name.charAt(0)}`;
-            document.getElementById('chat-detail-view').classList.remove('hidden');
-            document.getElementById('chat-detail-view').classList.add('flex');
+        window.startChatFromProfile = () => {
+            if (!auth.currentUser || auth.currentUser.isAnonymous) {
+                openAuthModal();
+                document.getElementById('auth-error-message').textContent = "Inicia sesión para contactar profesionales.";
+                document.getElementById('auth-error-message').classList.remove('hidden');
+                return;
+            }
+            openChat(currentWorkerData.nombre);
         };
 
-        window.closeChat = function() {
-            document.getElementById('chat-detail-view').classList.add('hidden');
-            document.getElementById('chat-detail-view').classList.remove('flex');
+        window.openChat = (name) => {
+            document.getElementById('chat-name').textContent = name;
+            document.getElementById('chat-avatar').src = `https://placehold.co/40x40/6366f1/ffffff?text=${name[0]}`;
+            document.getElementById('chat-messages').innerHTML = `<div class="chat-bubble chat-received">¡Hola! ¿En qué puedo ayudarte hoy?</div>`;
+            document.getElementById('chat-detail-view').classList.remove('hidden');
         };
+
+        window.closeChat = () => document.getElementById('chat-detail-view').classList.add('hidden');
 
         window.showView = function(viewId) {
             document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
             document.getElementById(viewId + '-view').classList.add('active');
-            
             document.querySelectorAll('.nav-button').forEach(btn => {
-                btn.classList.remove('text-indigo-400');
-                btn.classList.add('text-gray-500');
+                btn.classList.toggle('text-indigo-400', btn.dataset.view === viewId);
+                btn.classList.toggle('text-gray-500', btn.dataset.view !== viewId);
             });
-            const activeBtn = document.querySelector(`.nav-button[data-view='${viewId}']`);
-            if(activeBtn) {
-                activeBtn.classList.remove('text-gray-500');
-                activeBtn.classList.add('text-indigo-400');
-            }
-            
-            const mapBtn = document.getElementById('map-toggle-btn');
-            const title = document.getElementById('header-title');
-            
-            if(viewId === 'home') {
-                mapBtn.classList.remove('hidden');
-                title.textContent = 'Arreglados';
-                if (!document.getElementById('map-container').classList.contains('hidden') && isMapInitialized) setTimeout(() => map.invalidateSize(), 100);
-            } else {
-                mapBtn.classList.add('hidden');
-                if(viewId === 'messages') title.textContent = 'Mensajes';
-                if(viewId === 'jobs') title.textContent = 'Mis Trabajos';
-                if(viewId === 'settings') {
-                    const user = auth?.currentUser;
-                    const authInfoDiv = document.getElementById('auth-info');
-
-                    if (!user || user.isAnonymous) {
-                         authInfoDiv.innerHTML = `
-                            <h3 class="text-white font-bold mb-2">Plan Actual: Gratuito</h3>
-                            <p class="text-gray-400 text-sm mb-4">Inicia sesión para guardar tus trabajos.</p>
-                            <button onclick="openAuthModal()" class="w-full mt-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold text-sm transition">Iniciar Sesión / Registrarse</button>
-                        `;
-                    }
-                    title.textContent = 'Cuenta';
-                }
-                if (viewId === 'worker-profile') {
-                    title.textContent = 'Perfil de Profesional';
-                }
-            }
+            document.getElementById('header-title').textContent = viewId === 'home' ? 'Arreglados' : 
+                                                                viewId === 'worker-profile' ? 'Perfil' : 
+                                                                viewId.charAt(0).toUpperCase() + viewId.slice(1);
         };
 
-        async function simulateInitialWorkers(db) {
-             const workersCollection = collection(db, FIRESTORE_PATHS.PUBLIC_WORKERS);
-             // CRÍTICO: Verificar si la colección ya tiene documentos antes de insertar
-             const snapshot = await getDocs(workersCollection);
-
-             if (snapshot.empty) {
-                 const batch = [
-                    { id: "w1", nombre: "Juan Pérez", oficio: "Electricista", reviews: 45, rating: 5, distancia: 2.1, lat: -34.6037, lng: -58.3816 },
-                    { id: "w2", nombre: "María Gómez", oficio: "Plomero", reviews: 12, rating: 4.2, distancia: 3.5, lat: -34.5997, lng: -58.4000 },
-                    { id: "w3", nombre: "Roberto Díaz", oficio: "Carpintero", reviews: 98, rating: 4.8, distancia: 5.0, lat: -34.6200, lng: -58.3700 },
-                    { id: "w4", nombre: "Ana López", oficio: "Albañil", reviews: 20, rating: 4.5, distancia: 7.0, lat: -34.6150, lng: -58.3900 }
-                 ];
-                 for(let w of batch) await setDoc(doc(db, FIRESTORE_PATHS.PUBLIC_WORKERS, w.id), w);
-                 console.log("Simulación de trabajadores iniciales completada.");
-             }
+        async function simulateInitialWorkers(database) {
+            const col = collection(database, FIRESTORE_PATHS.PUBLIC_WORKERS);
+            const snap = await getDocs(col);
+            if (snap.empty) {
+                const data = [
+                    { nombre: "Juan Pérez", oficio: "Electricista", rating: 5, distancia: 1.2 },
+                    { nombre: "María Gómez", oficio: "Plomero", rating: 4.8, distancia: 2.5 },
+                    { nombre: "Roberto Díaz", oficio: "Carpintero", rating: 4.9, distancia: 3.1 },
+                    { nombre: "Ana López", oficio: "Albañil", rating: 4.7, distancia: 5.0 }
+                ];
+                for (const item of data) await setDoc(doc(col), item);
+            }
         }
 
+        // Inicio
         document.addEventListener('DOMContentLoaded', () => {
-            updateAuthModalButtons(false); // Deshabilitar botones al inicio
-            initializeFirebase();
-            
-            // FALLBACK CRÍTICO: Si initializeFirebase no establece isAuthAppReady en 2 segundos,
-            // lo forzamos para que el usuario pueda intentar el login/registro manual.
-            setTimeout(() => {
-                if (!isAuthAppReady) {
-                    isAuthAppReady = true;
-                    updateAuthModalButtons(true);
-                    console.error("FIREBASE FALLBACK: Forced Auth readiness. Initialization may have failed.");
-                }
-            }, 2000); 
-
-            document.querySelectorAll('.nav-button').forEach(button => {
-                button.addEventListener('click', (e) => showView(e.currentTarget.getAttribute('data-view')));
-            });
-            document.getElementById('map-toggle-btn').classList.remove('hidden');
-            showView('home');
+            startApp();
+            document.querySelectorAll('.nav-button').forEach(btn => btn.onclick = () => showView(btn.dataset.view));
         });
     </script>
 </body>
