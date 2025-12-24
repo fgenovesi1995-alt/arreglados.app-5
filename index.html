@@ -394,8 +394,17 @@
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, onSnapshot, collection, query, limit, setDoc, getDoc, where, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
+        // INICIALIZACIÓN FIREBASE AL PRINCIPIO
+        // Mover la inicialización aquí asegura que 'auth' exista antes de ser usado
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+
         // --- DEFINICIONES GLOBALES ---
-        // Definimos las funciones PRIMERO para que estén listas antes de que cargue Firebase
         
         window.currentWorkerData = null;
         window.markers = [];
@@ -475,6 +484,7 @@
             errorEl.classList.add('hidden');
 
             try {
+                // 'auth' ya está inicializado arriba, así que esto es seguro
                 if (isLogin) await signInWithEmailAndPassword(auth, email, password);
                 else await createUserWithEmailAndPassword(auth, email, password);
                 window.closeAuthModal();
@@ -501,15 +511,6 @@
         };
 
         let workersUnsub = null;
-
-        // Firebase Init
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const auth = getAuth(app);
 
         // Renderizado de ratings
         const renderRating = (rating) => {
