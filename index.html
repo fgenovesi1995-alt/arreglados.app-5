@@ -394,25 +394,16 @@
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, onSnapshot, collection, query, limit, setDoc, getDoc, where, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // INICIALIZACIÓN FIREBASE AL PRINCIPIO
-        // Mover la inicialización aquí asegura que 'auth' exista antes de ser usado
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const auth = getAuth(app);
-
         // --- DEFINICIONES GLOBALES ---
+        // Definimos las variables y funciones PRIMERO para que estén listas antes de que cargue Firebase
         
+        let app, auth, db;
         window.currentWorkerData = null;
         window.markers = [];
-        window.isAuthAppReady = false; 
         window.map = null;
         window.currentCategory = 'all';
 
-        // Gestión de Vistas
+        // Gestión de Vistas (Navegación)
         window.showView = (viewId) => {
             document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
             const target = document.getElementById(viewId + '-view');
@@ -468,7 +459,7 @@
             }).addTo(window.map);
         }
 
-        // Auth
+        // Auth UI
         window.openAuthModal = () => document.getElementById('auth-modal').classList.remove('hidden');
         window.closeAuthModal = () => {
             document.getElementById('auth-modal').classList.add('hidden');
@@ -484,18 +475,18 @@
             errorEl.classList.add('hidden');
 
             try {
-                // 'auth' ya está inicializado arriba, así que esto es seguro
+                if (!auth) throw new Error("Sistema no conectado. Intente más tarde.");
                 if (isLogin) await signInWithEmailAndPassword(auth, email, password);
                 else await createUserWithEmailAndPassword(auth, email, password);
                 window.closeAuthModal();
             } catch (e) {
                 console.error(e);
-                errorEl.textContent = "Error: " + (e.code ? e.code.replace('auth/', '').replace(/-/g, ' ') : 'Error');
+                errorEl.textContent = "Error: " + (e.code ? e.code.replace('auth/', '').replace(/-/g, ' ') : e.message);
                 errorEl.classList.remove('hidden');
             }
         };
 
-        window.signOutUser = () => signOut(auth);
+        window.signOutUser = () => { if(auth) signOut(auth); };
 
         // Filtros
         window.filterWorkers = (category) => {
@@ -525,7 +516,7 @@
 
         // Función Fetch
         function fetchWorkers(category = 'all') {
-            if (!auth.currentUser) return;
+            if (!auth || !auth.currentUser) return;
             if (workersUnsub) workersUnsub();
 
             const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'workers');
@@ -568,6 +559,7 @@
         }
 
         window.openWorkerProfile = async (id) => {
+            if (!db) return;
             const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'workers', id);
             const snap = await getDoc(docRef);
             if (snap.exists()) {
@@ -584,7 +576,7 @@
         };
 
         window.startChatFromProfile = () => {
-            if (!auth.currentUser || auth.currentUser.isAnonymous) { window.openAuthModal(); return; }
+            if (!auth || !auth.currentUser || auth.currentUser.isAnonymous) { window.openAuthModal(); return; }
             const data = window.currentWorkerData;
             const name = data?.nombre || "Experto";
             document.getElementById('chat-name').textContent = name;
@@ -625,20 +617,39 @@
             }, 1500);
         };
 
+        // --- INICIALIZACIÓN FIREBASE SEGURA ---
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
         async function initApp() {
             try {
+                // Inicializamos Firebase dentro de un try/catch para no romper la UI si falla
+                app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+
+                // Listeners
+                onAuthStateChanged(auth, handleUserChange);
+
+                // Auth Inicial
                 if (initialAuthToken) await signInWithCustomToken(auth, initialAuthToken);
                 else await signInAnonymously(auth);
+
                 await checkAndSeedData();
                 fetchWorkers('all');
                 
+            } catch (error) { 
+                console.error("Init Error (Firebase):", error); 
+                // Aún si falla Firebase, mostramos la UI básica
+            } finally {
                 // IMPORTANTE: Inicializar la vista Home para que el botón de mapa aparezca
                 window.showView('home');
-                
-            } catch (error) { console.error("Init Error:", error); }
+            }
         }
 
         async function checkAndSeedData() {
+            if (!db) return;
             const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'workers');
             const snapshot = await getDocs(query(colRef, limit(1)));
             if (snapshot.empty) {
@@ -659,7 +670,7 @@
             }
         }
 
-        onAuthStateChanged(auth, (user) => {
+        function handleUserChange(user) {
             const authInfo = document.getElementById('auth-info');
             const signoutBtn = document.getElementById('sign-out-btn');
             const msgList = document.getElementById('message-list');
@@ -717,7 +728,7 @@
                 signoutBtn.classList.add('hidden');
             }
             fetchWorkers(window.currentCategory || 'all');
-        });
+        }
 
         initApp();
     </script>
