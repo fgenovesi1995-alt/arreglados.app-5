@@ -394,10 +394,18 @@
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, onSnapshot, collection, query, limit, setDoc, getDoc, where, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
+        // --- INICIALIZACIÓN FIREBASE SÍNCRONA Y CONSTANTES ---
+        // Esto se ejecuta inmediatamente al cargar el script, asegurando que 'auth' exista.
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
         // --- DEFINICIONES GLOBALES ---
-        // Definimos las variables y funciones PRIMERO para que estén listas antes de que cargue Firebase
         
-        let app, auth, db;
         window.currentWorkerData = null;
         window.markers = [];
         window.map = null;
@@ -475,7 +483,7 @@
             errorEl.classList.add('hidden');
 
             try {
-                if (!auth) throw new Error("Sistema no conectado. Intente más tarde.");
+                // 'auth' ya es una constante y está definido al inicio del script.
                 if (isLogin) await signInWithEmailAndPassword(auth, email, password);
                 else await createUserWithEmailAndPassword(auth, email, password);
                 window.closeAuthModal();
@@ -486,7 +494,7 @@
             }
         };
 
-        window.signOutUser = () => { if(auth) signOut(auth); };
+        window.signOutUser = () => signOut(auth);
 
         // Filtros
         window.filterWorkers = (category) => {
@@ -617,19 +625,9 @@
             }, 1500);
         };
 
-        // --- INICIALIZACIÓN FIREBASE SEGURA ---
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-
         async function initApp() {
             try {
-                // Inicializamos Firebase dentro de un try/catch para no romper la UI si falla
-                app = initializeApp(firebaseConfig);
-                auth = getAuth(app);
-                db = getFirestore(app);
-
-                // Listeners
+                // Listeners (usando la constante 'auth' inicializada arriba)
                 onAuthStateChanged(auth, handleUserChange);
 
                 // Auth Inicial
