@@ -393,12 +393,24 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, onSnapshot, collection, query, limit, setDoc, getDoc, where, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+// ===== GLOBAL APP STATE =====
+window.appState = {
+  ready: false,
+  user: null
+};
+
 
         // --- INICIALIZACIÓN FIREBASE SÍNCRONA Y CONSTANTES ---
         // Esto se ejecuta inmediatamente al cargar el script, asegurando que 'auth' exista.
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+const firebaseConfig = {
+  apiKey: "AIzaSyA65SrIYQa2WWi_OqNv5jfk0yMgO19TTiY",
+  authDomain: "arreglados.firebaseapp.com",
+  projectId: "arreglados",
+  storageBucket: "arreglados.firebasestorage.app",
+  messagingSenderId: "341769997918",
+  appId: "1:341769997918:web:263b6928465748b6aeeecf",
+  measurementId: "G-P9JXJ1ZZG5"
+};
 
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
