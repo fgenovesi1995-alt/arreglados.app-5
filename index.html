@@ -419,7 +419,6 @@ async function fetchWorkers() {
 function renderWorkers(workers) {
   const container = document.getElementById("worker-list");
 
-  // Loader OFF
   container.innerHTML = "";
 
   if (workers.length === 0) {
@@ -430,15 +429,6 @@ function renderWorkers(workers) {
     `;
     return;
   }
-	
-async function showWorkersView() {
-  if (!window.appState.ready) return;
-
-  const workers = await fetchWorkers();
-  renderWorkers(workers);
-}
-
-window.showWorkersView = showWorkersView;
 
   workers.forEach(worker => {
     const card = document.createElement("div");
@@ -447,9 +437,9 @@ window.showWorkersView = showWorkersView;
 
     card.innerHTML = `
       <div>
-        <h4 class="text-white font-semibold">${worker.name}</h4>
-        <p class="text-gray-400 text-sm">${worker.category}</p>
-        <p class="text-gray-500 text-xs">${worker.location}</p>
+        <h4 class="text-white font-semibold">${worker.name ?? worker.nombre}</h4>
+        <p class="text-gray-400 text-sm">${worker.category ?? worker.oficio}</p>
+        <p class="text-gray-500 text-xs">${worker.location ?? ""}</p>
       </div>
 
       <div class="text-yellow-400 font-bold">
@@ -460,6 +450,16 @@ window.showWorkersView = showWorkersView;
     container.appendChild(card);
   });
 }
+
+async function showWorkersView() {
+  if (!window.appState.ready) return;
+
+  const workers = await fetchWorkers();
+  renderWorkers(workers);
+}
+
+window.showWorkersView = showWorkersView;
+
 
 
 
