@@ -399,22 +399,9 @@ window.appState = {
   user: null
 };
 
-async function fetchWorkers() {
-  if (!window.appState.ready) return [];
+console.log("MODULE START");
+window.TEST_LOADED = true;
 
-  const q = query(collection(db, "workers"), limit(20));
-  const snapshot = await getDocs(q);
-
-  const workers = [];
-  snapshot.forEach(doc => {
-    workers.push({
-      id: doc.id,
-      ...doc.data()
-    });
-  });
-
-  return workers;
-}
 
 function renderWorkers(workers) {
   const container = document.getElementById("worker-list");
@@ -744,6 +731,9 @@ const firebaseConfig = {
         }
 
         function handleUserChange(user) {
+	window.appState.ready = true;
+	window.appState.user = user;
+
             const authInfo = document.getElementById('auth-info');
             const signoutBtn = document.getElementById('sign-out-btn');
             const msgList = document.getElementById('message-list');
@@ -802,6 +792,10 @@ const firebaseConfig = {
             }
             fetchWorkers(window.currentCategory || 'all');
         }
+
+const initialAuthToken = null;
+const appId = "arreglados";
+
 
         initApp();
 
