@@ -1,6 +1,9 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#4f46e5">
+
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Arreglados App - Servicios del Hogar</title>
@@ -559,17 +562,39 @@ const firebaseConfig = {
         window.signOutUser = () => signOut(auth);
 
         // Filtros
-        window.filterWorkers = (category) => {
-            window.currentCategory = category;
-            const title = category === 'all' ? 'Destacados Cerca' : `Resultados: ${category}`;
-            document.getElementById('list-title').textContent = title;
-            document.querySelectorAll('.cat-card').forEach(btn => {
-                const onclickVal = btn.getAttribute('onclick');
-                if (onclickVal.includes(`'${category}'`)) btn.classList.add('active');
-                else btn.classList.remove('active');
-            });
-            fetchWorkers(category);
-        };
+
+window.filterWorkers = (category) => {
+    window.currentCategory = category;
+
+    // Título
+    const title =
+        category === 'all'
+            ? 'Destacados Cerca'
+            : `Resultados: ${category}`;
+
+    document.getElementById('list-title').textContent = title;
+
+    // Botón activo
+    document.querySelectorAll('.cat-card').forEach(btn => {
+        const isActive = btn
+            .getAttribute('onclick')
+            ?.includes(`'${category}'`);
+
+        btn.classList.toggle('active', isActive);
+    });
+
+    // Loader ON
+    const container = document.getElementById('worker-list');
+    container.innerHTML = `
+        <div class="flex justify-center py-10">
+            <div class="loader"></div>
+        </div>
+    `;
+
+    // Fetch real
+    fetchWorkers(category);
+};
+
 
         let workersUnsub = null;
 
@@ -595,10 +620,31 @@ const firebaseConfig = {
             workersUnsub = onSnapshot(q, (snap) => {
                 const container = document.getElementById('worker-list');
                 if (snap.empty) {
-                    container.innerHTML = `<div class="flex justify-center py-10"><p class="text-xs font-black uppercase tracking-widest text-gray-500">Sin resultados</p></div>`;
-                    return;
-                }
+    const label =
+        category === 'all'
+            ? 'profesionales'
+            : category.toLowerCase();
+
+    container.innerHTML = `
+        <div class="flex justify-center py-10">
+            <p class="text-xs font-black uppercase tracking-widest text-gray-500">
+                No hay ${label} disponibles
+            </p>
+        </div>
+    `;
+    return;
+}
+
                 container.innerHTML = ''; 
+		const count = snap.size;
+const titleEl = document.getElementById('list-title');
+
+if (window.currentCategory !== 'all') {
+    titleEl.textContent = `Resultados: ${window.currentCategory} (${count})`;
+} else {
+    titleEl.textContent = `Destacados Cerca (${count})`;
+}
+
                 if (window.map) { window.markers.forEach(m => window.map.removeLayer(m)); window.markers = []; }
 
                 snap.forEach(docSnap => {
@@ -645,8 +691,13 @@ const firebaseConfig = {
             }
         };
 
-        window.startChatFromProfile = () => {
-            if (!auth || !auth.currentUser || auth.currentUser.isAnonymous) { window.openAuthModal(); return; }
+window.startChatFromProfile = () => {
+    if (!auth || !auth.currentUser || auth.currentUser.isAnonymous) {
+        window.openAuthModal();
+        return;
+    }
+
+    
             const data = window.currentWorkerData;
             const name = data?.nombre || "Experto";
             document.getElementById('chat-name').textContent = name;
@@ -801,6 +852,16 @@ const appId = "arreglados";
 
 window.TEST_LOADED = true;
 console.log("SCRIPT CARGADO OK");
+
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker
+      .register("/service-worker.js")
+      .then(() => console.log("Service Worker registrado"))
+      .catch(err => console.error("SW error", err));
+  });
+}
+
 
     </script>
 </body>
