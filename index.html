@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arreglados App - Servicios del Hogar</title>
+    
+    <!-- Configuración PWA -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#161b22">
+    <link rel="apple-touch-icon" href="https://placehold.co/180x180/4f46e5/ffffff?text=A">
+
+    <!-- Frameworks -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+     
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        
+        :root {
+            --bg-dark: #0d1117;
+            --card-dark: #161b22;
+            --border-dark: #30363d;
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-dark); 
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            color: #e6edf3;
+            overflow: hidden;
+        }
+
+        #app-container {
+            width: 100%;
+            max-width: 420px; 
+            height: 95vh; 
+            max-height: 860px;
+            background-color: var(--card-dark); 
+            border-radius: 3rem;
+            box-shadow: 0 0 0 10px #000, 0 50px 100px -20px rgba(0, 0, 0, 1);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            border: 1px solid var(--border-dark);
+        }
+
+        /* Vistas */
+        .view {
+            display: none;
+            height: 100%;
+            overflow-y: auto;
+            padding-bottom: 8rem;
+            scrollbar-width: none;
+        }
+        .view::-webkit-scrollbar { display: none; }
+        .view.active { display: block; }
+
+        /* Mapa */
+        #map { 
+            height: 360px; 
+            width: 100%; 
+            border-radius: 2.5rem; 
+            z-index: 0; 
+            margin-top: 1.5rem;
+            border: 2px solid var(--border-dark);
+            filter: grayscale(0.2) contrast(1.1);
+        }
+        
+        /* Chat */
+        .chat-bubble { 
+            max-width: 85%; 
+            padding: 1.2rem 1.5rem; 
+            border-radius: 2rem; 
+            margin-bottom: 1rem; 
+            font-size: 0.95rem; 
+            line-height: 1.5;
+            position: relative;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .chat-sent { 
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%); 
+            color: white; 
+            align-self: flex-end; 
+            border-bottom-right-radius: 0.4rem; 
+        }
+        .chat-received { 
+            background-color: #262c36; 
+            color: #e6edf3; 
+            align-self: flex-start; 
+            border-bottom-left-radius: 0.4rem; 
+            border: 1px solid var(--border-dark);
+        }
+
+        @keyframes popIn {
+            from { opacity: 0; transform: scale(0.9) translateY(10px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        @keyframes fadeInPage {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-view { animation: fadeInPage 0.4s ease-out forwards; }
+
+        /* Componentes */
+        .nav-button.active { color: var(--primary); }
+        .nav-button.active svg { 
+            stroke: var(--primary); 
+            filter: drop-shadow(0 0 5px rgba(99, 102, 241, 0.5));
+        }
+        .nav-button.active::after {
+            content: '';
+            position: absolute;
+            bottom: 5px;
+            width: 4px;
+            height: 4px;
+            background-color: var(--primary);
+            border-radius: 50%;
+        }
+
+        .cat-card { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
+        .cat-card:active { transform: scale(0.95); }
+        .cat-card.active {
+            background-color: var(--primary);
+            border-color: var(--primary);
+            box-shadow: 0 10px 25px -5px rgba(99, 102, 241, 0.4);
+            transform: translateY(-4px);
+        }
+        .cat-card.active svg { color: white; }
+        .cat-card.active span { color: white; }
+
+        .loader {
+            border: 3px solid rgba(255,255,255,0.1);
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            border-left-color: var(--primary);
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+    <div id="app-container">
+        <!-- HEADER -->
+        <header class="absolute top-0 left-0 right-0 p-6 bg-[#161b22]/95 backdrop-blur-xl border-b border-gray-800 text-white flex justify-between items-center z-20 rounded-t-[3rem]">
+            <div class="flex flex-col">
+                <span class="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-0.5">Servicios</span>
+                <h1 id="header-title" class="text-2xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400">ARREGLADOS</h1>
+            </div>
+            
+            <div class="flex gap-3 items-center">
+                <!-- Botón Mapa/Lista (Controlado por JS) -->
+                <button id="map-toggle-btn" class="hidden text-indigo-400 text-[10px] font-black uppercase tracking-widest bg-indigo-500/10 px-4 py-2 rounded-full border border-indigo-500/20 hover:bg-indigo-500/20 transition" onclick="window.toggleMapView()">
+                    Ver Mapa
+                </button>
+                
+                <!-- Icono Notificaciones -->
+                <div class="relative cursor-pointer p-2 bg-gray-800/50 rounded-full hover:bg-gray-700 transition">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                    <span class="absolute top-1.5 right-1.5 flex h-2.5 w-2.5">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500 border border-[#161b22]"></span>
+                    </span>
+                </div>
+            </div>
+        </header>
+
+        <!-- CONTENIDO PRINCIPAL -->
+        <main class="flex-grow relative overflow-hidden bg-[#0d1117] pt-[88px]">
+
+            <!-- VISTA: HOME -->
+            <div id="home-view" class="view active p-6 animate-view">
+                <div class="mb-8 mt-2">
+                    <h2 class="text-white text-3xl font-extrabold tracking-tight mb-2">Encuentra Expertos</h2>
+                    <p class="text-gray-500 text-xs font-bold uppercase tracking-widest mb-6">Soluciones rápidas para tu hogar</p>
+                    
+                    <div class="relative group">
+                        <div class="absolute -inset-0.5 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-[2rem] opacity-30 group-hover:opacity-60 transition duration-500 blur"></div>
+                        <div class="relative flex items-center bg-[#161b22] rounded-[1.8rem]">
+                            <svg class="absolute left-5 text-gray-500" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                            <input type="text" placeholder="¿Qué estás buscando hoy?" class="w-full p-4.5 pl-14 bg-transparent text-white focus:outline-none placeholder:text-gray-600 font-medium">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Categorías -->
+                <div class="mb-8">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-white text-sm font-bold">Categorías</h3>
+                        <button class="text-indigo-400 text-xs font-bold" onclick="window.filterWorkers('all')">Ver todo</button>
+                    </div>
+                    
+                    <div id="categories-grid" class="grid grid-cols-4 gap-3">
+                        <button class="cat-card flex flex-col items-center justify-center p-4 rounded-[1.8rem] bg-[#161b22] border border-gray-800 hover:border-indigo-500/50" onclick="window.filterWorkers('Electricista')">
+                            <div class="w-10 h-10 rounded-full bg-yellow-500/10 flex items-center justify-center mb-2 text-yellow-400">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2l-3 8h5l-3 10l5-8h-5l3-10z"/></svg>
+                            </div>
+                            <span class="text-[10px] font-black uppercase tracking-tight text-gray-400">Electricista</span>
+                        </button>
+
+                        <button class="cat-card flex flex-col items-center justify-center p-4 rounded-[1.8rem] bg-[#161b22] border border-gray-800 hover:border-indigo-500/50" onclick="window.filterWorkers('Plomero')">
+                            <div class="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center mb-2 text-blue-400">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v10m0 0l-4-4m4 4l4-4M5 20h14"/></svg>
+                            </div>
+                            <span class="text-[10px] font-black uppercase tracking-tight text-gray-400">Plomero</span>
+                        </button>
+
+                        <button class="cat-card flex flex-col items-center justify-center p-4 rounded-[1.8rem] bg-[#161b22] border border-gray-800 hover:border-indigo-500/50" onclick="window.filterWorkers('Gasista')">
+                            <div class="w-10 h-10 rounded-full bg-orange-500/10 flex items-center justify-center mb-2 text-orange-400">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2c0 10-6 10-6 16a6 6 0 0 0 12 0c0-6-6-6-6-16z"/></svg>
+                            </div>
+                            <span class="text-[10px] font-black uppercase tracking-tight text-gray-400">Gasista</span>
+                        </button>
+
+                        <button class="cat-card flex flex-col items-center justify-center p-4 rounded-[1.8rem] bg-[#161b22] border border-gray-800 hover:border-indigo-500/50" onclick="window.filterWorkers('all')">
+                            <div class="w-10 h-10 rounded-full bg-gray-700/30 flex items-center justify-center mb-2 text-gray-300">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 12h8m-4-4v8"/></svg>
+                            </div>
+                            <span class="text-[10px] font-black uppercase tracking-tight text-gray-400">Todos</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Mapa -->
+                <div id="map-container" class="hidden mb-8 animate-view">
+                    <div id="map"></div>
+                    <div class="mt-3 flex items-center justify-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></span>
+                        <p class="text-[10px] text-indigo-400 font-bold uppercase tracking-widest">Ubicación en tiempo real</p>
+                    </div>
+                </div>
+
+                <!-- Lista -->
+                <div id="worker-list-container">
+                    <h3 id="list-title" class="text-gray-400 text-xs font-black uppercase tracking-[0.2em] mb-4 pl-2">Destacados Cerca</h3>
+                    <div id="worker-list" class="space-y-4">
+                        <div class="flex justify-center py-10"><div class="loader"></div></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VISTA: PERFIL -->
+            <div id="worker-profile-view" class="view p-0 animate-view bg-[#0d1117]">
+                <div class="relative h-72 bg-gradient-to-br from-indigo-900 via-[#1e1b4b] to-black p-8 flex flex-col justify-end overflow-hidden">
+                    <div class="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]"></div>
+                    <div class="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-[#161b22]/80 to-transparent"></div>
+                    <button onclick="window.showView('home')" class="absolute top-24 left-6 p-3 bg-black/40 rounded-2xl text-white backdrop-blur-xl border border-white/10 shadow-lg z-20 hover:scale-105 transition"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m15 18-6-6 6-6"/></svg></button>
+                    <div class="translate-y-12 z-10 flex items-end gap-5">
+                        <img id="worker-avatar-profile" class="h-36 w-36 rounded-[2.5rem] border-[8px] border-[#0d1117] object-cover bg-gray-800 shadow-2xl" src="">
+                    </div>
+                </div>
+                <div class="px-8 pt-16 pb-8">
+                    <div class="flex justify-between items-start mb-6">
+                        <div>
+                            <h2 id="worker-name-profile" class="text-3xl font-black text-white leading-none mb-2 tracking-tight">Cargando...</h2>
+                            <p id="worker-oficio-profile" class="text-indigo-400 font-black uppercase tracking-[0.2em] text-[11px]">...</p>
+                        </div>
+                        <div class="flex flex-col items-end">
+                            <span class="text-yellow-400 text-lg font-black flex items-center gap-1">★ 4.9</span>
+                            <span class="text-gray-600 text-[9px] font-bold uppercase">120 Reseñas</span>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-3 gap-3 mb-8">
+                        <div class="bg-[#161b22] p-4 rounded-[1.8rem] text-center border border-gray-800"><p class="text-white font-black text-lg" id="worker-distance-profile">...</p><p class="text-[9px] text-gray-500 font-bold uppercase">Distancia</p></div>
+                        <div class="bg-[#161b22] p-4 rounded-[1.8rem] text-center border border-gray-800"><p class="text-white font-black text-lg">5+</p><p class="text-[9px] text-gray-500 font-bold uppercase">Años Exp.</p></div>
+                        <div class="bg-[#161b22] p-4 rounded-[1.8rem] text-center border border-gray-800"><p class="text-green-400 font-black text-lg">100%</p><p class="text-[9px] text-gray-500 font-bold uppercase">Garantía</p></div>
+                    </div>
+                    <div class="mb-8">
+                        <h3 class="text-white font-bold text-sm uppercase tracking-widest mb-3">Sobre mí</h3>
+                        <p id="worker-bio-profile" class="text-gray-400 text-sm leading-relaxed font-medium">Información no disponible.</p>
+                    </div>
+                    <div class="flex flex-col gap-4">
+                        <button onclick="window.startChatFromProfile()" class="w-full py-5 bg-indigo-600 text-white font-black rounded-[2rem] shadow-xl shadow-indigo-500/20 active:scale-95 transition-all flex justify-center items-center gap-3">INICIAR CONVERSACIÓN</button>
+                        <button class="w-full py-4 bg-[#161b22] text-gray-300 font-bold rounded-[2rem] border border-gray-800 active:scale-95 transition-all text-xs uppercase tracking-widest hover:bg-gray-800">SOLICITAR PRESUPUESTO</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VISTA: MENSAJES -->
+            <div id="messages-view" class="view p-6 animate-view">
+                <h2 class="text-white text-4xl font-black tracking-tighter mb-8 mt-2">Chats</h2>
+                <div id="message-list" class="space-y-4">
+                    <div class="flex flex-col items-center justify-center py-20 opacity-50">
+                        <div class="w-24 h-24 bg-gray-800 rounded-full flex items-center justify-center mb-6"><svg class="text-gray-600" xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+                        <p class="text-gray-400 font-bold uppercase text-xs tracking-widest text-center">No tienes mensajes recientes</p>
+                        <button onclick="window.openAuthModal()" class="mt-6 px-6 py-2 bg-indigo-500/20 text-indigo-400 rounded-full text-[10px] font-black uppercase tracking-widest border border-indigo-500/30">Iniciar Sesión</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- OVERLAY CHAT -->
+            <div id="chat-detail-view" class="absolute inset-0 bg-[#0d1117] z-40 hidden flex flex-col animate-view">
+                <div class="p-4 pt-10 bg-[#161b22]/95 backdrop-blur-xl border-b border-gray-800 flex items-center shadow-2xl">
+                    <button onclick="window.closeChat()" class="text-gray-400 mr-4 p-3 bg-gray-800/50 rounded-2xl hover:bg-gray-700 transition"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="m15 18-6-6 6-6"/></svg></button>
+                    <div class="relative"><img id="chat-avatar" class="h-12 w-12 rounded-2xl object-cover border border-gray-700" src=""><span class="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 border-2 border-[#161b22] rounded-full"></span></div>
+                    <div class="ml-4"><h3 id="chat-name" class="text-white font-black text-sm tracking-tight">Nombre</h3><p class="text-[10px] text-green-400 font-black uppercase tracking-widest mt-0.5">En línea ahora</p></div>
+                </div>
+                <div id="chat-messages" class="flex-grow p-6 overflow-y-auto flex flex-col bg-[url('https://www.transparenttextures.com/patterns/dark-matter.png')]"></div>
+                <div class="p-5 bg-[#161b22] flex items-center border-t border-gray-800 pb-8">
+                    <input id="chat-input" type="text" placeholder="Escribe un mensaje..." class="flex-grow bg-[#0d1117] text-white rounded-2xl py-4 px-5 mx-2 focus:outline-none border border-gray-800 focus:border-indigo-500 transition font-medium text-sm">
+                    <button onclick="window.sendMessage()" class="bg-indigo-600 p-4 rounded-2xl text-white shadow-lg active:scale-95 transition"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" x2="11" y1="2" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>
+                </div>
+            </div>
+
+            <!-- VISTA: TAREAS -->
+            <div id="jobs-view" class="view p-6 animate-view">
+                <h2 class="text-white text-4xl font-black tracking-tighter mb-8 mt-2">Tareas</h2>
+                <div id="jobs-list" class="space-y-5">
+                    <div class="bg-[#161b22] p-6 rounded-[2.5rem] border border-gray-800 shadow-xl relative overflow-hidden group">
+                        <div class="absolute right-0 top-0 w-32 h-32 bg-indigo-500/5 rounded-full blur-3xl group-hover:bg-indigo-500/10 transition"></div>
+                        <div class="flex justify-between items-start mb-4 relative z-10">
+                            <div><h4 class="text-white font-black text-base tracking-tight mb-1">Mantenimiento Gas</h4><p class="text-gray-500 text-[10px] font-bold uppercase tracking-widest">ID #AR-9942</p></div>
+                            <span class="px-3 py-1 bg-yellow-500/10 text-yellow-400 text-[9px] font-black rounded-full border border-yellow-500/20 uppercase tracking-widest">Pendiente</span>
+                        </div>
+                        <div class="flex items-center gap-4 py-4 border-y border-gray-800/50">
+                            <div class="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-400 font-black border border-indigo-500/20">JS</div>
+                            <div><p class="text-gray-300 text-xs font-bold">Jorge Silva</p><p class="text-indigo-400 text-[9px] font-black uppercase tracking-widest">Gasista</p></div>
+                        </div>
+                        <div class="mt-4 flex justify-between items-center">
+                            <span class="text-gray-600 text-[10px] font-bold uppercase">Hace 2 horas</span>
+                            <button class="text-white text-[10px] font-black uppercase tracking-widest bg-gray-800 px-4 py-2 rounded-full hover:bg-gray-700 transition">Detalles</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VISTA: PERFIL -->
+            <div id="settings-view" class="view p-6 animate-view">
+                <h2 class="text-white text-4xl font-black tracking-tighter mb-8 mt-2">Cuenta</h2>
+                <div id="auth-info" class="bg-gradient-to-br from-indigo-600 via-indigo-700 to-purple-800 rounded-[3rem] p-8 mb-8 shadow-2xl relative overflow-hidden">
+                    <div class="flex flex-col items-center justify-center h-40"><div class="loader"></div></div>
+                </div>
+                <div class="bg-[#161b22] rounded-[2.5rem] border border-gray-800 overflow-hidden divide-y divide-gray-800/50">
+                    <div class="p-6 flex justify-between items-center cursor-pointer hover:bg-gray-800/50 transition">
+                        <div class="flex items-center gap-4"><div class="p-2 bg-gray-800 rounded-xl text-indigo-400"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div><span class="text-white text-xs font-bold uppercase tracking-wide">Notificaciones</span></div>
+                        <div class="w-10 h-5 bg-indigo-600 rounded-full relative"><div class="absolute right-1 top-1 w-3 h-3 bg-white rounded-full shadow-md"></div></div>
+                    </div>
+                    <div id="sign-out-btn" class="p-6 flex items-center gap-4 cursor-pointer hover:bg-red-900/10 transition hidden" onclick="window.signOutUser()">
+                        <div class="p-2 bg-red-900/20 rounded-xl text-red-400"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg></div>
+                        <span class="text-red-400 text-xs font-black uppercase tracking-widest">Cerrar Sesión</span>
+                    </div>
+                </div>
+                <p class="text-center text-gray-700 text-[10px] font-black uppercase tracking-[0.3em] mt-10">Arreglados v3.0 Pro</p>
+            </div>
+
+        </main>
+        
+        <!-- MODAL AUTH -->
+        <div id="auth-modal" class="fixed inset-0 bg-black/95 z-50 hidden justify-center items-center p-6 backdrop-blur-md">
+            <div class="bg-[#161b22] p-10 rounded-[3rem] w-full max-w-sm border border-gray-800 shadow-2xl relative overflow-hidden">
+                <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"></div>
+                <div class="text-center mb-8">
+                    <div class="w-20 h-20 bg-gray-800 rounded-[2rem] mx-auto mb-6 flex items-center justify-center text-white font-black text-4xl shadow-inner border border-gray-700">A</div>
+                    <h3 class="text-white text-2xl font-black tracking-tight mb-2">Bienvenido</h3>
+                    <p class="text-gray-500 text-xs font-medium uppercase tracking-wide">Accede para continuar</p>
+                </div>
+                <div id="auth-error-message" class="hidden mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-red-400 text-xs font-bold text-center"></div>
+                <div class="space-y-4">
+                    <input id="auth-email" type="email" placeholder="Correo Electrónico" class="w-full p-5 bg-[#0d1117] text-white rounded-2xl border border-gray-800 focus:border-indigo-500 focus:outline-none transition font-medium">
+                    <input id="auth-password" type="password" placeholder="Contraseña" class="w-full p-5 bg-[#0d1117] text-white rounded-2xl border border-gray-800 focus:border-indigo-500 focus:outline-none transition font-medium">
+                </div>
+                <div class="mt-8 flex flex-col gap-3">
+                    <button id="login-button" onclick="window.handleAuth(true)" class="w-full py-5 bg-indigo-600 text-white font-black rounded-2xl shadow-xl shadow-indigo-900/30 active:scale-95 transition uppercase tracking-widest text-xs">Entrar</button>
+                    <button id="register-button" onclick="window.handleAuth(false)" class="w-full py-5 bg-[#21262d] text-white font-black rounded-2xl border border-gray-800 active:scale-95 transition uppercase tracking-widest text-[10px] hover:bg-gray-800">Crear Cuenta</button>
+                </div>
+                <button onclick="window.closeAuthModal()" class="w-full mt-6 text-gray-600 text-[10px] font-black uppercase tracking-[0.2em] hover:text-white transition">CANCELAR</button>
+            </div>
+        </div>
+
+        <!-- FOOTER NAV -->
+        <footer class="fixed bottom-0 left-0 right-0 bg-[#161b22]/90 backdrop-blur-xl border-t border-gray-800 p-1 pb-6 z-40 rounded-t-[2.5rem] shadow-[0_-20px_40px_rgba(0,0,0,0.6)] flex justify-around items-center h-24 max-w-[420px] mx-auto">
+            <button class="nav-button active flex flex-col items-center p-3 w-16 transition-all duration-300" data-view="home" onclick="window.showView('home')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><span class="text-[9px] font-black mt-1.5 uppercase tracking-tighter">Inicio</span></button>
+            <button class="nav-button flex flex-col items-center p-3 w-16 transition-all duration-300 text-gray-600" data-view="messages" onclick="window.showView('messages')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span class="text-[9px] font-black mt-1.5 uppercase tracking-tighter">Chat</span></button>
+            <button class="nav-button flex flex-col items-center p-3 w-16 transition-all duration-300 text-gray-600" data-view="jobs" onclick="window.showView('jobs')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg><span class="text-[9px] font-black mt-1.5 uppercase tracking-tighter">Tareas</span></button>
+            <button class="nav-button flex flex-col items-center p-3 w-16 transition-all duration-300 text-gray-600" data-view="settings" onclick="window.showView('settings')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span class="text-[9px] font-black mt-1.5 uppercase tracking-tighter">Perfil</span></button>
+        </footer>
+    </div>
+
+    <!-- LOGICA -->
+   <script type="module">
+/* 1️⃣ IMPORTS – SIEMPRE ARRIBA */
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+import {
+  getAuth,
+  setPersistence,
+  browserLocalPersistence,
+  signInAnonymously,
+  signInWithCustomToken,
+  onAuthStateChanged,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut
+} from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+
+
+import {
+  getFirestore,
+  doc,
+  onSnapshot,
+  collection,
+  query,
+  limit,
+  setDoc,
+  getDoc,
+  where,
+  getDocs
+} from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+
+/* 2️⃣ GLOBALS OBLIGATORIOS */
+const appId =
+  typeof __app_id !== "undefined"
+    ? __app_id
+    : "arreglados-app";
+
+const initialAuthToken =
+  typeof __initial_auth_token !== "undefined"
+    ? __initial_auth_token
+    : null;
+
+window.appId = appId;
+
+
+/* 3️⃣ ESTADO GLOBAL */
+window.appState = {
+  ready: false,
+  user: null
+};
+
+
+/* 4️⃣ FIREBASE CONFIG */
+const firebaseConfig = {
+  apiKey: "AIzaSyA65SrIYQa2WWi_OqNv5jfk0yMgO19TTiY",
+  authDomain: "arreglados.firebaseapp.com",
+  projectId: "arreglados",
+  storageBucket: "arreglados.firebasestorage.app",
+  messagingSenderId: "341769997918",
+  appId: "1:341769997918:web:263b6928465748b6aeeecf",
+  measurementId: "G-P9JXJ1ZZG5"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+        // --- DEFINICIONES GLOBALES ---
+        
+        window.currentWorkerData = null;
+        window.markers = [];
+        window.map = null;
+        window.currentCategory = 'all';
+
+        // Gestión de Vistas (Navegación)
+        window.showView = (viewId) => {
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+            const target = document.getElementById(viewId + '-view');
+            if(target) target.classList.add('active');
+            
+            document.querySelectorAll('.nav-button').forEach(btn => {
+                const isTarget = btn.dataset.view === viewId;
+                btn.classList.toggle('active', isTarget);
+                btn.classList.toggle('text-indigo-400', isTarget);
+                btn.classList.toggle('text-gray-600', !isTarget);
+            });
+
+            const titles = { home: 'ARREGLADOS', messages: 'CHATS', jobs: 'TAREAS', settings: 'MI CUENTA', 'worker-profile': 'PERFIL' };
+            const titleEl = document.getElementById('header-title');
+            if(titleEl) titleEl.textContent = titles[viewId] || 'ARREGLADOS';
+            
+            const mapBtn = document.getElementById('map-toggle-btn');
+            if(mapBtn) mapBtn.classList.toggle('hidden', viewId !== 'home');
+            
+            if (viewId === 'home' && window.map) {
+                setTimeout(() => window.map.invalidateSize(), 200);
+            }
+        };
+
+        // Mapa
+        window.toggleMapView = () => {
+            const mapContainer = document.getElementById('map-container');
+            const listContainer = document.getElementById('worker-list-container');
+            const btn = document.getElementById('map-toggle-btn');
+            
+            if (mapContainer.classList.contains('hidden')) {
+                mapContainer.classList.remove('hidden');
+                listContainer.classList.add('hidden');
+                btn.textContent = "Ver Lista";
+                btn.classList.add('bg-indigo-500', 'text-white');
+                if (!window.map) initMap();
+                setTimeout(() => window.map.invalidateSize(), 100);
+            } else {
+                mapContainer.classList.add('hidden');
+                listContainer.classList.remove('hidden');
+                btn.textContent = "Ver Mapa";
+                btn.classList.remove('bg-indigo-500', 'text-white');
+            }
+        };
+
+        function initMap() {
+            if (window.map) return;
+            window.map = L.map('map', { zoomControl: false }).setView([-34.6037, -58.3816], 13);
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; CartoDB',
+                subdomains: 'abcd',
+                maxZoom: 19
+            }).addTo(window.map);
+        }
+
+        // Auth UI
+        window.openAuthModal = () => document.getElementById('auth-modal').classList.remove('hidden');
+        window.closeAuthModal = () => {
+            document.getElementById('auth-modal').classList.add('hidden');
+            document.getElementById('auth-error-message').classList.add('hidden');
+        };
+
+        window.handleAuth = async (isLogin) => {
+            const email = document.getElementById('auth-email').value;
+            const password = document.getElementById('auth-password').value;
+            const errorEl = document.getElementById('auth-error-message');
+            
+            if (!email || !password) return;
+            errorEl.classList.add('hidden');
+
+            try {
+                // 'auth' ya es una constante y está definido al inicio del script.
+                if (isLogin) await signInWithEmailAndPassword(auth, email, password);
+                else await createUserWithEmailAndPassword(auth, email, password);
+                window.closeAuthModal();
+            } catch (e) {
+                console.error(e);
+                errorEl.textContent = "Error: " + (e.code ? e.code.replace('auth/', '').replace(/-/g, ' ') : e.message);
+                errorEl.classList.remove('hidden');
+            }
+        };
+
+        window.signOutUser = () => signOut(auth);
+
+function renderWorkers(workers) {
+  const container = document.getElementById("worker-list");
+  container.innerHTML = "";
+
+  if (!workers || workers.length === 0) {
+    container.innerHTML = `
+      <p class="text-center text-gray-400 text-sm">
+        No hay trabajadores disponibles
+      </p>
+    `;
+    return;
+  }
+
+  workers.forEach(worker => {
+    const card = document.createElement("div");
+    card.className = "worker-card";
+    card.innerHTML = `
+      <div class="p-4 rounded-xl bg-[#161b22] border border-gray-800">
+        <h4 class="text-white font-bold">${worker.nombre}</h4>
+        <p class="text-sm text-gray-400">${worker.oficio}</p>
+        <button class="mt-2 text-indigo-400 text-xs font-bold"
+          onclick="openWorkerProfile(${JSON.stringify(worker).replace(/"/g, '&quot;')})">
+          Ver perfil
+        </button>
+      </div>
+    `;
+    container.appendChild(card);
+  });
+}
+
+
+        // Filtros
+        window.filterWorkers = (category) => {
+            window.currentCategory = category;
+            const title = category === 'all' ? 'Destacados Cerca' : `Resultados: ${category}`;
+            document.getElementById('list-title').textContent = title;
+            document.querySelectorAll('.cat-card').forEach(btn => {
+                const onclickVal = btn.getAttribute('onclick');
+                if (onclickVal.includes(`'${category}'`)) btn.classList.add('active');
+                else btn.classList.remove('active');
+            });
+            fetchWorkers(category);
+        };
+
+        let workersUnsub = null;
+
+        // Renderizado de ratings
+        const renderRating = (rating) => {
+            const stars = Math.round(rating);
+            let html = '';
+            for(let i=0; i<5; i++) {
+                if (i < stars) html += '<span class="text-yellow-400">★</span>';
+                else html += '<span class="text-gray-600">★</span>';
+            }
+            return html;
+        };
+
+        // Función Fetch
+        function fetchWorkers(category = 'all') {
+            if (!auth || !auth.currentUser) return;
+            if (workersUnsub) workersUnsub();
+
+            const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'workers');
+            let q = category === 'all' ? query(colRef, limit(20)) : query(colRef, where("oficio", "==", category));
+
+            workersUnsub = onSnapshot(q, (snap) => {
+                const container = document.getElementById('worker-list');
+                if (snap.empty) {
+                    container.innerHTML = `<div class="flex justify-center py-10"><p class="text-xs font-black uppercase tracking-widest text-gray-500">Sin resultados</p></div>`;
+                    return;
+                }
+                container.innerHTML = ''; 
+                if (window.map) { window.markers.forEach(m => window.map.removeLayer(m)); window.markers = []; }
+
+                snap.forEach(docSnap => {
+                    const w = docSnap.data();
+                    const initials = w.nombre ? w.nombre.substring(0,2).toUpperCase() : 'EX';
+                    const ratingHtml = renderRating(4.9);
+                    
+                    const itemHTML = `
+                        <div class="worker-item flex items-center bg-[#161b22] p-5 rounded-[2rem] border border-gray-800 hover:border-indigo-500/50 shadow-lg group relative overflow-hidden" onclick="window.openWorkerProfile('${docSnap.id}')">
+                            <div class="absolute right-0 top-0 w-20 h-20 bg-indigo-500/5 rounded-full blur-xl group-hover:bg-indigo-500/10 transition"></div>
+                            <div class="h-14 w-14 rounded-[1.2rem] bg-gradient-to-br from-indigo-900/50 to-purple-900/50 text-indigo-300 flex items-center justify-center font-black text-lg mr-5 border border-indigo-500/20 shadow-inner z-10">${initials}</div>
+                            <div class="flex-grow z-10">
+                                <h4 class="text-white font-black text-sm tracking-tight mb-1">${w.nombre}</h4>
+                                <div class="flex items-center gap-2"><span class="px-2 py-0.5 bg-gray-800 rounded-md text-[9px] text-indigo-400 font-black uppercase tracking-widest border border-gray-700">${w.oficio}</span></div>
+                            </div>
+                            <div class="text-right z-10">
+                                <div class="flex items-center justify-end gap-1 mb-1 text-[10px]">${ratingHtml}</div>
+                                <p class="text-gray-600 text-[10px] font-bold uppercase tracking-wide">${w.distancia || '2.5'} km</p>
+                            </div>
+                        </div>`;
+                    container.insertAdjacentHTML('beforeend', itemHTML);
+                    if (window.map && w.lat && w.lng) {
+                        const m = L.marker([w.lat, w.lng]).addTo(window.map).bindPopup(`<b>${w.nombre}</b><br>${w.oficio}`);
+                        window.markers.push(m);
+                    }
+                });
+            });
+        }
+
+        window.openWorkerProfile = async (id) => {
+            if (!db) return;
+            const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'workers', id);
+            const snap = await getDoc(docRef);
+            if (snap.exists()) {
+                const data = snap.data();
+                window.currentWorkerData = data;
+                document.getElementById('worker-name-profile').textContent = data.nombre;
+                document.getElementById('worker-oficio-profile').textContent = data.oficio;
+                document.getElementById('worker-distance-profile').textContent = (data.distancia || 2.5) + " km";
+                document.getElementById('worker-bio-profile').textContent = data.bio || `Profesional certificado en ${data.oficio} con amplia experiencia en soluciones residenciales y comerciales.`;
+                const initial = data.nombre ? data.nombre[0] : 'U';
+                document.getElementById('worker-avatar-profile').src = `https://placehold.co/400x400/4f46e5/ffffff?text=${initial}`;
+                window.showView('worker-profile');
+setTimeout(() => {
+  window.startChatFromProfile();
+}, 300);
+
+            }
+        };
+
+        window.startChatFromProfile = () => {
+            if (!auth || !auth.currentUser || auth.currentUser.isAnonymous) { window.openAuthModal(); return; }
+            const data = window.currentWorkerData;
+            const name = data?.nombre || "Experto";
+            document.getElementById('chat-name').textContent = name;
+            document.getElementById('chat-avatar').src = `https://placehold.co/100x100/4f46e5/ffffff?text=${name[0]}`;
+            const chatBox = document.getElementById('chat-messages');
+            chatBox.innerHTML = `<div class="chat-bubble chat-received"><p>Hola, soy ${name}. ¿En qué puedo ayudarte hoy?</p><span class="text-[9px] text-gray-500 block mt-1">Ahora</span></div>`;
+            document.getElementById('chat-detail-view').classList.remove('hidden');
+            document.getElementById('chat-detail-view').classList.add('flex');
+        };
+
+        window.closeChat = () => {
+            const chatView = document.getElementById('chat-detail-view');
+            chatView.classList.add('hidden');
+            chatView.classList.remove('flex');
+        };
+
+        window.sendMessage = () => {
+            const input = document.getElementById('chat-input');
+            const text = input.value.trim();
+            if (!text) return;
+            const chatBox = document.getElementById('chat-messages');
+            chatBox.insertAdjacentHTML('beforeend', `<div class="chat-bubble chat-sent"><p>${text}</p><span class="text-[9px] text-indigo-200 block mt-1 text-right">Enviado</span></div>`);
+            input.value = '';
+            chatBox.scrollTop = chatBox.scrollHeight;
+            
+            // Simular respuesta inteligente
+            setTimeout(() => {
+                const responses = [
+                    "Gracias por contactarme. ¿Podrías darme más detalles?",
+                    "Entendido. ¿Para cuándo necesitas el trabajo?",
+                    "Perfecto, déjame revisar mi agenda y te confirmo.",
+                    "¿Tienes fotos del problema para enviarme?"
+                ];
+                const reply = responses[Math.floor(Math.random() * responses.length)];
+                
+                chatBox.insertAdjacentHTML('beforeend', `<div class="chat-bubble chat-received"><p>${reply}</p><span class="text-[9px] text-gray-500 block mt-1">Ahora</span></div>`);
+                chatBox.scrollTop = chatBox.scrollHeight;
+            }, 1500);
+        };
+
+        async function initApp() {
+  try {
+    await setPersistence(auth, browserLocalPersistence);
+
+    onAuthStateChanged(auth, handleUserChange);
+
+    if (!auth.currentUser) {
+      if (initialAuthToken) {
+        await signInWithCustomToken(auth, initialAuthToken);
+      } else {
+        await signInAnonymously(auth);
+      }
+    }
+
+    await checkAndSeedData();
+    fetchWorkers('all');
+
+  } catch (error) {
+    console.error("Init Error (Firebase):", error);
+  } finally {
+    window.showView('home');
+  }
+}
+
+
+
+                await checkAndSeedData();
+                fetchWorkers('all');
+                
+            } catch (error) { 
+                console.error("Init Error (Firebase):", error); 
+                // Aún si falla Firebase, mostramos la UI básica
+            } finally {
+                // IMPORTANTE: Inicializar la vista Home para que el botón de mapa aparezca
+                window.showView('home');
+            }
+        }
+
+        async function checkAndSeedData() {
+            if (!db) return;
+            const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'workers');
+            const snapshot = await getDocs(query(colRef, limit(1)));
+            if (snapshot.empty) {
+                const dummyWorkers = [
+                    { nombre: "Carlos Ruiz", oficio: "Electricista", distancia: 1.2, lat: -34.6037, lng: -58.3816, bio: "Instalaciones eléctricas residenciales." },
+                    { nombre: "Ana Mendez", oficio: "Plomero", distancia: 3.5, lat: -34.5997, lng: -58.4000, bio: "Reparación de fugas urgentes." },
+                    { nombre: "Jorge Viale", oficio: "Gasista", distancia: 0.8, lat: -34.6200, lng: -58.3700, bio: "Gasista matriculado." },
+                    { nombre: "Lucía P.", oficio: "Electricista", distancia: 5.1, lat: -34.5800, lng: -58.4200, bio: "Especialista en iluminación LED." },
+                    { nombre: "Marcos T.", oficio: "Gasista", distancia: 2.2, lat: -34.5900, lng: -58.3900, bio: "Instalación de estufas." },
+                    { nombre: "Pedro S.", oficio: "Plomero", distancia: 4.5, lat: -34.6100, lng: -58.4100, bio: "Destapaciones con máquina." },
+                    { nombre: "Sofia L.", oficio: "Electricista", distancia: 1.9, lat: -34.6050, lng: -58.3850, bio: "Cableado estructurado." },
+                    { nombre: "Miguel R.", oficio: "Gasista", distancia: 3.8, lat: -34.6150, lng: -58.4050, bio: "Pruebas de hermeticidad." },
+                    { nombre: "Elena K.", oficio: "Plomero", distancia: 2.7, lat: -34.6250, lng: -58.3750, bio: "Instalación de griferías." },
+                    { nombre: "Roberto D.", oficio: "Electricista", distancia: 6.0, lat: -34.5700, lng: -58.4300, bio: "Tableros eléctricos." }
+                ];
+                for (const w of dummyWorkers) await setDoc(doc(colRef), w);
+                setTimeout(() => fetchWorkers('all'), 1000);
+            }
+}
+      
+
+        function handleUserChange(user) {
+            const authInfo = document.getElementById('auth-info');
+            const signoutBtn = document.getElementById('sign-out-btn');
+            const msgList = document.getElementById('message-list');
+            
+            if (user && !user.isAnonymous) {
+                const email = user.email || "Usuario";
+                const char = email.charAt(0).toUpperCase();
+                authInfo.innerHTML = `
+                    <div class="flex items-center gap-6 relative z-10">
+                        <div class="w-20 h-20 bg-white/20 rounded-[1.8rem] flex items-center justify-center font-black text-4xl backdrop-blur-md border border-white/20 shadow-2xl">${char}</div>
+                        <div>
+                            <p class="text-white font-black text-2xl tracking-tighter leading-none mb-2">Hola!</p>
+                            <p class="text-indigo-100 text-[11px] font-bold uppercase tracking-widest opacity-80 truncate w-40">${email}</p>
+                            <div class="mt-3 flex gap-2">
+                                <span class="px-3 py-1 bg-green-500/20 text-green-300 text-[9px] font-black rounded-full border border-green-500/30 uppercase">Verificado</span>
+                            </div>
+                        </div>
+                    </div>`;
+                signoutBtn.classList.remove('hidden');
+                
+                // Mensaje Mock para usuario autenticado
+                msgList.innerHTML = `
+                    <div class="flex items-center bg-[#161b22] p-5 rounded-[2.2rem] border border-gray-800 hover:border-indigo-500/50 cursor-pointer shadow-lg transition" onclick="window.currentWorkerData={nombre:'Carlos Ruiz', oficio:'Electricista'}; window.startChatFromProfile()">
+                        <div class="relative">
+                            <div class="h-14 w-14 rounded-2xl bg-indigo-600 flex items-center justify-center font-black text-white text-lg">CR</div>
+                            <span class="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 border-2 border-[#161b22] rounded-full"></span>
+                        </div>
+                        <div class="flex-grow ml-4">
+                            <div class="flex justify-between items-center mb-1">
+                                <h4 class="text-white font-bold text-sm">Carlos Ruiz</h4>
+                                <span class="text-[10px] text-gray-500 font-bold">10:40 AM</span>
+                            </div>
+                            <p class="text-gray-400 text-xs truncate">Ya estoy en camino al domicilio.</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center bg-[#161b22] p-5 rounded-[2.2rem] border border-gray-800 hover:border-indigo-500/50 cursor-pointer shadow-lg transition mt-4" onclick="window.currentWorkerData={nombre:'Ana Mendez', oficio:'Plomero'}; window.startChatFromProfile()">
+                        <div class="relative">
+                            <div class="h-14 w-14 rounded-2xl bg-pink-600 flex items-center justify-center font-black text-white text-lg">AM</div>
+                        </div>
+                        <div class="flex-grow ml-4">
+                            <div class="flex justify-between items-center mb-1">
+                                <h4 class="text-white font-bold text-sm">Ana Mendez</h4>
+                                <span class="text-[10px] text-gray-500 font-bold">Ayer</span>
+                            </div>
+                            <p class="text-gray-400 text-xs truncate">¿Pudiste revisar el presupuesto?</p>
+                        </div>
+                    </div>`;
+            } else {
+                authInfo.innerHTML = `
+                    <div class="relative z-10 text-center py-4">
+                        <h4 class="text-white font-black text-3xl tracking-tighter mb-2">Únete hoy</h4>
+                        <p class="text-indigo-100 text-xs font-medium mb-6 opacity-80">Guarda tus favoritos y gestiona tus citas.</p>
+                        <button onclick="window.openAuthModal()" class="w-full py-4 bg-white text-indigo-600 font-black rounded-[1.5rem] shadow-xl active:scale-95 transition uppercase tracking-[0.2em] text-[10px]">CREAR CUENTA</button>
+                    </div>`;
+                signoutBtn.classList.add('hidden');
+            }
+            fetchWorkers(window.currentCategory || 'all');
+        }
+
+        initApp();
+    </script>
+</body>
+</html>
